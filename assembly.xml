@@ -1,0 +1,32 @@
+<assembly>
+    <id>distribution</id>
+
+    <formats>
+        <format>dir</format>
+    </formats>
+
+    <dependencySets>
+        <dependencySet>
+            <useProjectArtifact>true</useProjectArtifact>
+            <outputDirectory>lib</outputDirectory>
+        </dependencySet>
+    </dependencySets>
+
+    <fileSets>
+        <fileSet>
+            <directory>src/main/script</directory>
+            <outputDirectory>/bin</outputDirectory>
+            <includes>
+                <include>*</include>
+            </includes>
+            <fileMode>755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>src/main/resources</directory>
+            <outputDirectory>/conf</outputDirectory>
+            <includes>
+                <include>config.properties</include>
+            </includes>
+       </fileSet>
+    </fileSets>
+</assembly>
