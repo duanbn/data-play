@@ -28,8 +28,6 @@ public class Config {
                                                                                            .getRuntime()
                                                                                            .availableProcessors() * 2);
 
-    protected static final boolean                      IS_ONECLASS        = false;
-
     protected static String                             CORPUS_NAME;
     protected static File                               CORPUS_DB;
     protected static File                               TRAIN_DB;
@@ -45,7 +43,7 @@ public class Config {
     protected static final Map<String, Integer>         CATEGORY_NAME_CODE = Maps.newTreeMap();
     protected static final Map<Integer, String>         CATEGORY_CODE_NAME = Maps.newTreeMap();
 
-    protected static final Map<String, ConfigCategoryC> CATEGORY_PARAM     = Maps.newHashMap();
+    protected static final Map<String, ConfigCategoryC> CATEGORY_PARAM     = Maps.newLinkedHashMap();
 
     static {
         Configuration conf = null;
@@ -77,17 +75,10 @@ public class Config {
 
         // init category
         int categoryId = 0;
-        for (File f : CORPUS_DB.listFiles()) {
-            if (f.isDirectory()) {
-                if (IS_ONECLASS) {
-                    CATEGORY_CODE_NAME.put(categoryId, f.getName());
-                    CATEGORY_NAME_CODE.put(f.getName(), categoryId);
-                } else {
-                    categoryId++;
-                    CATEGORY_CODE_NAME.put(categoryId, f.getName());
-                    CATEGORY_NAME_CODE.put(f.getName(), categoryId);
-                }
-            }
+        for (String category : CATEGORY_PARAM.keySet()) {
+            categoryId++;
+            CATEGORY_CODE_NAME.put(categoryId, category);
+            CATEGORY_NAME_CODE.put(category, categoryId);
         }
     }
 

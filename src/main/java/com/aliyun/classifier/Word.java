@@ -47,6 +47,12 @@ public class Word implements Comparable<Word> {
         return (int) (this.getId() - o.getId());
     }
 
+    @Override
+    public String toString() {
+        return "Word [id=" + id + ", value=" + value + ", tf=" + tf + ", df=" + df + ", score=" + score + ", minScore="
+                + minScore + ", maxScore=" + maxScore + ", quality=" + quality + "]";
+    }
+
     public long getId() {
         return id;
     }

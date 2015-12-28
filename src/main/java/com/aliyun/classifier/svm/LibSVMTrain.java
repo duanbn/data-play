@@ -79,7 +79,7 @@ public class LibSVMTrain extends Config {
             List<String> lines = IOUtils.readLines(br);
             this.N = Integer.parseInt(lines.get(0));
             for (String line : lines.subList(1, lines.size())) {
-                ss = line.split(" ");
+                ss = line.split(" +");
                 this.df.put(ss[1], Integer.parseInt(ss[2]));
                 this.wordIdMap.put(ss[1], Long.parseLong(ss[0]));
                 this.maxWordId = Long.parseLong(ss[0]);
@@ -119,24 +119,16 @@ public class LibSVMTrain extends Config {
     private svm_parameter getSvm_parameter(int categoryId) {
         svm_parameter param = new svm_parameter();
 
-        if (IS_ONECLASS) {
-            param.svm_type = svm_parameter.ONE_CLASS;
-            param.nr_weight = 0;
-            param.weight_label = new int[0];
-            param.weight = new double[0];
-            param.nu = 0.99;
-        } else {
-            param.svm_type = svm_parameter.C_SVC;
-            // compute punish factor
-            int[] weightLabel = null;
-            double[] weight = null;
-            weightLabel = new int[] { categoryId };
-            weight = new double[] { getParameterC(categoryId) };
-            param.nr_weight = 1;
-            param.weight_label = weightLabel;
-            param.weight = weight;
-            param.nu = 0.1;
-        }
+        param.svm_type = svm_parameter.C_SVC;
+        // compute punish factor
+        int[] weightLabel = null;
+        double[] weight = null;
+        weightLabel = new int[] { categoryId };
+        weight = new double[] { getParameterC(categoryId) };
+        param.nr_weight = 1;
+        param.weight_label = weightLabel;
+        param.weight = weight;
+        param.nu = 0.1;
 
         param.kernel_type = svm_parameter.RBF;
         param.degree = 3;
@@ -256,9 +248,14 @@ public class LibSVMTrain extends Config {
         Multimap<Integer, List<Word>> svmFormats = ArrayListMultimap.create();
         List<Word> featuresVector = null;
 
-        if (IS_ONECLASS) {
-            for (Multiset<String> doc : categoryTokenized.get(category)) {
-                int labelIndex = 1;
+        for (Map.Entry<String, Collection<Multiset<String>>> entry : categoryTokenized.asMap().entrySet()) {
+
+            int labelIndex = -1;
+            if (entry.getKey().equals(category)) {
+                labelIndex = categoryId;
+            }
+
+            for (Multiset<String> doc : entry.getValue()) {
                 featuresVector = Lists.newArrayList();
                 for (Multiset.Entry<String> word : doc.entrySet()) {
                     if (!wordIdMap.containsKey(word.getElement()))
@@ -270,28 +267,6 @@ public class LibSVMTrain extends Config {
                 }
                 Collections.sort(featuresVector);
                 svmFormats.put(labelIndex, featuresVector);
-            }
-        } else {
-            for (Map.Entry<String, Collection<Multiset<String>>> entry : categoryTokenized.asMap().entrySet()) {
-
-                int labelIndex = -1;
-                if (entry.getKey().equals(category)) {
-                    labelIndex = categoryId;
-                }
-
-                for (Multiset<String> doc : entry.getValue()) {
-                    featuresVector = Lists.newArrayList();
-                    for (Multiset.Entry<String> word : doc.entrySet()) {
-                        if (!wordIdMap.containsKey(word.getElement()))
-                            continue;
-                        Word w = Word.valueOf(wordIdMap.get(word.getElement()), word.getElement(), word.getCount(),
-                                df.get(word.getElement()));
-                        w.setScore(weight(w, N));
-                        featuresVector.add(w);
-                    }
-                    Collections.sort(featuresVector);
-                    svmFormats.put(labelIndex, featuresVector);
-                }
             }
         }
 

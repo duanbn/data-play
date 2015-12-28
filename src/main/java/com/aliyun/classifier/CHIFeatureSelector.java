@@ -1,5 +1,7 @@
 package com.aliyun.classifier;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +19,7 @@ public class CHIFeatureSelector extends Config {
     public List<Word> run(int N, Multimap<String, Set<String>> categoryTokenized, Multiset<String> featureDict)
             throws Exception {
 
-        List<Word> result = Lists.newCopyOnWriteArrayList();
+        List<Word> result = Lists.newArrayList();
 
         for (Multiset.Entry<String> entry : featureDict.entrySet()) {
             if (entry.getCount() > 2 && entry.getElement().length() > 1) {
@@ -26,22 +28,35 @@ public class CHIFeatureSelector extends Config {
         }
 
         final CountDownLatch cdl = new CountDownLatch(result.size());
-        System.out.println("document tokenized done. feature size " + cdl.getCount());
+        System.out.println("filter invalid feature done. remain feature size " + cdl.getCount());
 
-        new Timer().schedule(new TimerTask() {
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                System.out.println("remain " + cdl.getCount());
+                System.out.print(".");
             }
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
-
         for (Word feature : result) {
             threadPool.submit(new ComputeTask(categoryTokenized, N, CATEGORY_NAME_CODE.keySet(), feature, cdl));
         }
         cdl.await();
-        System.out.println("done " + (System.currentTimeMillis() - start) + "ms");
+        timer.cancel();
+
+        Collections.sort(result, new Comparator<Word>() {
+            @Override
+            public int compare(Word o1, Word o2) {
+                if (o1.getQuality() == o2.getQuality()) {
+                    return 0;
+                }
+
+                return o1.getQuality() > o2.getQuality() ? -1 : 1;
+            }
+        });
+
+        System.out.println("compute chi done " + (System.currentTimeMillis() - start) + "ms");
 
         return result;
     }

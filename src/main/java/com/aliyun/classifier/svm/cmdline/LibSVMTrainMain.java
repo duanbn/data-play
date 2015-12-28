@@ -10,7 +10,7 @@ import java.util.Set;
 import com.aliyun.classifier.CHIFeatureSelector;
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Word;
-import com.aliyun.classifier.svm.LibSVMTfDf;
+import com.aliyun.classifier.svm.LibSVMDf;
 import com.aliyun.classifier.svm.LibSVMTrain;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ConcurrentHashMultiset;
@@ -41,21 +41,13 @@ public class LibSVMTrainMain extends Config {
                     + (System.currentTimeMillis() - start) + "ms");
 
             List<Word> featureWords = new CHIFeatureSelector().run(N, categoryTokenized, featureDict);
-            Collections.sort(featureWords, new Comparator<Word>() {
-                @Override
-                public int compare(Word o1, Word o2) {
-                    if (o1.getQuality() == o2.getQuality()) {
-                        return 0;
-                    }
 
-                    return o1.getQuality() > o2.getQuality() ? 1 : -1;
-                }
-            });
-
-            new LibSVMTfDf().run(N, categoryTokenized, featureWords);
+            new LibSVMDf().run(N, categoryTokenized, featureWords);
         }
 
         new LibSVMTrain().run();
+
+        System.exit(0);
 
     }
 

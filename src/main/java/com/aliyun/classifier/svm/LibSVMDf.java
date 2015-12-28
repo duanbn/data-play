@@ -13,7 +13,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
-public class LibSVMTfDf extends Config {
+public class LibSVMDf extends Config {
 
     public void run(int N, Multimap<String, Set<String>> categoryTokenized, List<Word> tf) throws Exception {
 
@@ -39,14 +39,19 @@ public class LibSVMTfDf extends Config {
             wordId++;
 
             line = new StringBuilder();
-            line.append(wordId).append(" ").append(word).append(" ").append(df.get(word)).append(" ")
-                    .append(word.getQuality());
+            line.append(wordId).append(" ");
+            line.append(word.getValue()).append(" ");
+            line.append(df.get(word.getValue())).append(" ");
+            line.append(word.getQuality());
             lines.add(line.toString());
         }
+
         try (FileWriter fw = new FileWriter(DICT)) {
             IOUtils.writeLines(lines, "\n", fw);
         }
+
         System.out.println("compute df done " + (System.currentTimeMillis() - start) + "ms");
+
     }
 
 }
