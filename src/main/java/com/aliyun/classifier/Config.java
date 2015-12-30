@@ -46,6 +46,11 @@ public class Config {
     protected static final Map<String, ConfigCategoryC> CATEGORY_PARAM     = Maps.newLinkedHashMap();
 
     static {
+        TRAIN_DB = new File(System.getProperty("system.prop.basedir"), "train");
+        if (!TRAIN_DB.exists()) {
+            TRAIN_DB.mkdirs();
+        }
+
         Configuration conf = null;
         try {
             conf = new PropertiesConfiguration("config.properties");
@@ -53,16 +58,11 @@ public class Config {
             throw new RuntimeException("load properties fail", e);
         }
         CORPUS_NAME = conf.getString("corpus.name");
-        CORPUS_DB = new File(conf.getString("corpus.directory"));
-        TRAIN_DB = new File(System.getProperty("system.prop.basedir"), "train");
-        if (!TRAIN_DB.exists()) {
-            TRAIN_DB.mkdirs();
-        }
-
         CHI = new File(TRAIN_DB, CORPUS_NAME + ".chi");
         DICT = new File(TRAIN_DB, CORPUS_NAME + ".dict");
         LABELINDEX = new File(TRAIN_DB, CORPUS_NAME + ".labelindex");
         REPORT = new File(TRAIN_DB, CORPUS_NAME + ".report");
+        CORPUS_DB = new File(conf.getString("corpus.directory"));
 
         // init category cost
         Iterator<String> keys = conf.getKeys("category");

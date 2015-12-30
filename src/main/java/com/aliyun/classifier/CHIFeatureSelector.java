@@ -1,34 +1,25 @@
 package com.aliyun.classifier;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multiset;
 
 public class CHIFeatureSelector extends Config {
 
-    public List<Word> run(int N, Multimap<String, Set<String>> categoryTokenized, Multiset<String> featureDict)
-            throws Exception {
+    private Corpus corpus;
 
-        List<Word> result = Lists.newArrayList();
+    public CHIFeatureSelector(Corpus corpus) {
+        this.corpus = corpus;
+    }
 
-        for (Multiset.Entry<String> entry : featureDict.entrySet()) {
-            if (entry.getCount() > 2 && entry.getElement().length() > 1) {
-                result.add(Word.valueOf(entry.getElement()));
-            }
-        }
+    public void run() throws Exception {
 
-        final CountDownLatch cdl = new CountDownLatch(result.size());
-        System.out.println("filter invalid feature done. remain feature size " + cdl.getCount());
+        final CountDownLatch cdl = new CountDownLatch(corpus.features.size());
 
         Timer timer = new Timer();
         timer.schedule(new TimerTask() {
@@ -39,26 +30,14 @@ public class CHIFeatureSelector extends Config {
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
-        for (Word feature : result) {
-            threadPool.submit(new ComputeTask(categoryTokenized, N, CATEGORY_NAME_CODE.keySet(), feature, cdl));
+        for (Word feature : corpus.features) {
+            threadPool.submit(new ComputeTask(corpus.categoryTokenized, corpus.N, CATEGORY_NAME_CODE.keySet(), feature,
+                    cdl));
         }
         cdl.await();
         timer.cancel();
 
-        Collections.sort(result, new Comparator<Word>() {
-            @Override
-            public int compare(Word o1, Word o2) {
-                if (o1.getQuality() == o2.getQuality()) {
-                    return 0;
-                }
-
-                return o1.getQuality() > o2.getQuality() ? -1 : 1;
-            }
-        });
-
         System.out.println("compute chi done " + (System.currentTimeMillis() - start) + "ms");
-
-        return result;
     }
 
     private static class ComputeTask implements Runnable {
@@ -117,8 +96,8 @@ public class CHIFeatureSelector extends Config {
             double A = 0, B = 0, C = 0, D = 0;
             for (String key : categoryTokenized.keySet()) {
                 if (key.equals(category)) {
-                    for (Set<String> docFeature : categoryTokenized.get(key)) {
-                        if (docFeature.contains(feature.getValue())) {
+                    for (Set<String> doc : categoryTokenized.get(key)) {
+                        if (doc.contains(feature.getValue())) {
                             A++;
                         } else {
                             C++;

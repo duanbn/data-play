@@ -12,7 +12,7 @@ classpath=$classpath:$configdir
 classpath=$classpath:$libdir/*
 
 
-main=com.aliyun.classifier.svm.cmdline.LibSVMTrainMain
+main=com.aliyun.classifier.svm.cmdline.LibSVMDictMain
 
 opts="-Xms128m"
 sysargs="-Dsystem.prop.basedir=$basedir"

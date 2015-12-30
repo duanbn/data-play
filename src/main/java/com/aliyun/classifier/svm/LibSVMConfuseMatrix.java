@@ -72,6 +72,9 @@ public class LibSVMConfuseMatrix extends Config {
 
     public List<String> getReport() {
         List<String> report = Lists.newArrayList();
+        report.add("===============================================================================");
+        report.add("CORPUS:" + CORPUS_NAME.toUpperCase());
+        report.add("===============================================================================");
         StringBuilder header = new StringBuilder();
         header.append(StringUtils.rightPad("CATEGORY", COLUMN_WITDH[0]));
         header.append(StringUtils.rightPad("RECALL", COLUMN_WITDH[1]));
@@ -79,16 +82,13 @@ public class LibSVMConfuseMatrix extends Config {
         header.append(StringUtils.rightPad("FSCORE", COLUMN_WITDH[3]));
         header.append(StringUtils.rightPad("COST", COLUMN_WITDH[4]));
         header.append(StringUtils.rightPad("ABCD", COLUMN_WITDH[5]));
-        report.add("===============================================================================");
-        report.add("CORPUS:" + CORPUS_NAME.toUpperCase());
-        report.add("===============================================================================");
         report.add(header.toString());
 
         Collections.sort(rows);
         for (Row row : rows) {
             report.add(row.toString());
         }
-        report.add("\n");
+        report.add(" ");
         report.add(StringUtils.rightPad("RECALL:", COLUMN_WITDH[0])
                 + StringUtils.rightPad(df.format(DoubleMath.mean(recalls)), COLUMN_WITDH[1]));
         report.add(StringUtils.rightPad("PRECISION:", COLUMN_WITDH[0])
