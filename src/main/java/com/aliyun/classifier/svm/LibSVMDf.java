@@ -53,7 +53,7 @@ public class LibSVMDf extends Config {
             }
         }
 
-        System.out.println("collect feature done " + corpus.featureDict.elementSet().size() + " "
+        System.out.println("collect feature done " + corpus.features.size() + " "
                 + (System.currentTimeMillis() - start) + "ms");
 
         //            new CHIFeatureSelector(N, categoryTokenized, features).run();
