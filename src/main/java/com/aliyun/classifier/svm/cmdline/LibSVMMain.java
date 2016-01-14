@@ -88,7 +88,7 @@ public class LibSVMMain extends Config {
                         for (String tag : tags) {
                             tagLine += tag + " ";
                         }
-                        outQ.offer(StringUtils.rightPad(s, 40) + StringUtils.rightPad(tagLine, 40)
+                        outQ.offer(StringUtils.rightPad(s, 50) + StringUtils.rightPad(tagLine, 40)
                                 + (System.currentTimeMillis() - start) + "ms");
                     } catch (Exception e) {
                         System.out.println(e.getMessage());

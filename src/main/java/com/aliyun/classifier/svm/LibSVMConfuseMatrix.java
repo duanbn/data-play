@@ -19,7 +19,7 @@ import com.google.common.math.DoubleMath;
 public class LibSVMConfuseMatrix extends Config {
 
     private static final DecimalFormat df           = new DecimalFormat("0.######");
-    private static final int[]         COLUMN_WITDH = new int[] { 20, 15, 15, 15, 10, 20 };
+    private static final int[]         COLUMN_WITDH = new int[] { 30, 15, 15, 15, 10, 20 };
 
     private List<Row>                  rows         = Lists.newArrayList();
 

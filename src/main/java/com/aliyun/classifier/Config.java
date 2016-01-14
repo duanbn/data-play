@@ -26,7 +26,7 @@ public class Config {
     protected static final ExecutorService              threadPool         = Executors
                                                                                    .newFixedThreadPool(Runtime
                                                                                            .getRuntime()
-                                                                                           .availableProcessors() * 2);
+                                                                                           .availableProcessors() * 5);
 
     protected static String                             CORPUS_NAME;
     protected static File                               CORPUS_DB;

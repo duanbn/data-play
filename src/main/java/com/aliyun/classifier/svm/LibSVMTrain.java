@@ -37,8 +37,7 @@ public class LibSVMTrain extends Config {
 
     private Multimap<String, Multiset<String>> categoryTokenized = ArrayListMultimap.create();
 
-    public void run() throws Exception {
-
+    public void vectorization() throws Exception {
         List<String> lines = Lists.newArrayList();
         for (Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
             lines.add(entry.getKey() + " " + entry.getValue());
@@ -48,13 +47,57 @@ public class LibSVMTrain extends Config {
         }
         System.out.println("process category label index done");
 
-        final LibSVMConfuseMatrix cMatrix = new LibSVMConfuseMatrix();
+        init();
 
-        final LibSVMTrain main = new LibSVMTrain();
-        main.init();
         for (final Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
             if (CATEGORY_PARAM.containsKey(entry.getKey()) && CATEGORY_PARAM.get(entry.getKey()).isTrain) {
-                main.doTrain(entry.getKey(), entry.getValue(), cMatrix);
+                String category = entry.getKey();
+                Integer categoryId = entry.getValue();
+
+                Multimap<Integer, List<Word>> svmFormats = processSvmFormat(category, categoryId);
+                Map<Integer, List<List<Word>>> svmDocsMap = Maps.newHashMap();
+                Map<Integer, List<List<Word>>> svmtDocsMap = Maps.newHashMap();
+
+                split(svmDocsMap, svmtDocsMap, svmFormats, 0.6);
+                //        scale(svmDocsMap, svmtDocsMap, category);
+
+                List<String> svmLines = Lists.newArrayList();
+                build(svmLines, svmDocsMap);
+                try (FileWriter fw = new FileWriter(getFile(category, "svm"))) {
+                    IOUtils.writeLines(svmLines, "\n", fw);
+                }
+                List<String> svmtLines = Lists.newArrayList();
+                build(svmtLines, svmtDocsMap);
+                try (FileWriter fw = new FileWriter(getFile(category, "svmt"))) {
+                    IOUtils.writeLines(svmtLines, "\n", fw);
+                }
+
+                System.out.println("vectorization " + category + " done");
+            }
+        }
+    }
+
+    public void train() throws Exception {
+        final LibSVMConfuseMatrix cMatrix = new LibSVMConfuseMatrix();
+
+        for (final Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
+            if (CATEGORY_PARAM.containsKey(entry.getKey()) && CATEGORY_PARAM.get(entry.getKey()).isTrain) {
+                String category = entry.getKey();
+                Integer categoryId = entry.getValue();
+
+                try (FileReader svmFr = new FileReader(getFile(category, "svm"));
+                        FileReader svmtFr = new FileReader(getFile(category, "svmt"))) {
+                    List<String> svmLines = IOUtils.readLines(svmFr);
+                    List<String> svmtLines = IOUtils.readLines(svmtFr);
+
+                    // train model
+                    svm_parameter param = getSvm_parameter(categoryId);
+                    svm_problem prob = getSvm_problem(svmLines, param);
+                    svm_model model = svm.svm_train(prob, param);
+                    svm.svm_save_model(getFile(category, "model").getAbsolutePath(), model);
+
+                    cMatrix.testSample(svmtLines, category, model, param);
+                }
             }
         }
 
@@ -87,45 +130,14 @@ public class LibSVMTrain extends Config {
         }
     }
 
-    public void doTrain(String category, int categoryId, LibSVMConfuseMatrix cMatrix) throws Exception {
-        Multimap<Integer, List<Word>> svmFormats = processSvmFormat(category, categoryId);
-
-        Map<Integer, List<List<Word>>> svmDocsMap = Maps.newHashMap();
-        Map<Integer, List<List<Word>>> svmtDocsMap = Maps.newHashMap();
-
-        split(svmDocsMap, svmtDocsMap, svmFormats, 0.6);
-        //        scale(svmDocsMap, svmtDocsMap, category);
-
-        List<String> svmLines = Lists.newArrayList();
-        build(svmLines, svmDocsMap);
-        try (FileWriter fw = new FileWriter(getFile(category, "svm"))) {
-            IOUtils.writeLines(svmLines, "\n", fw);
-        }
-        List<String> svmtLines = Lists.newArrayList();
-        build(svmtLines, svmtDocsMap);
-        try (FileWriter fw = new FileWriter(getFile(category, "svmt"))) {
-            IOUtils.writeLines(svmtLines, "\n", fw);
-        }
-
-        // train model
-        svm_parameter param = getSvm_parameter(categoryId);
-        svm_problem prob = getSvm_problem(svmLines, param);
-        svm_model model = svm.svm_train(prob, param);
-        svm.svm_save_model(getFile(category, "model").getAbsolutePath(), model);
-
-        cMatrix.testSample(svmtLines, category, model, param);
-    }
-
     private svm_parameter getSvm_parameter(int categoryId) {
         svm_parameter param = new svm_parameter();
 
         param.svm_type = svm_parameter.C_SVC;
         // compute punish factor
-        int[] weightLabel = null;
-        double[] weight = null;
-        weightLabel = new int[] { categoryId };
-        weight = new double[] { getParameterC(categoryId) };
-        param.nr_weight = 1;
+        int[] weightLabel = new int[0];
+        double[] weight = new double[0];
+        param.nr_weight = 0;
         param.weight_label = weightLabel;
         param.weight = weight;
         param.nu = 0.1;
@@ -135,7 +147,7 @@ public class LibSVMTrain extends Config {
         param.gamma = 0; // 1/num_features
         param.coef0 = 0;
         param.cache_size = 200;
-        param.C = 1;
+        param.C = getParameterC(categoryId);
         param.eps = 1e-3;
         param.p = 0.1;
         param.shrinking = 1;
