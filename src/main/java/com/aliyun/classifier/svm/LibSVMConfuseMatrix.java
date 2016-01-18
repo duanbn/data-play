@@ -8,7 +8,6 @@ import java.util.StringTokenizer;
 import libsvm.svm;
 import libsvm.svm_model;
 import libsvm.svm_node;
-import libsvm.svm_parameter;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -21,6 +20,7 @@ public class LibSVMConfuseMatrix extends Config {
     private static final DecimalFormat df           = new DecimalFormat("0.######");
     private static final int[]         COLUMN_WITDH = new int[] { 30, 15, 15, 15, 10, 20 };
 
+    private int[][]                    maxtirx      = new int[CATEGORY_PARAM.size() + 1][3];
     private List<Row>                  rows         = Lists.newArrayList();
 
     private List<Double>               recalls      = Lists.newArrayList();
@@ -30,9 +30,7 @@ public class LibSVMConfuseMatrix extends Config {
     public LibSVMConfuseMatrix() {
     }
 
-    public void testSample(List<String> lines, String category, svm_model model, svm_parameter svm_param) {
-        double A = 0, B = 0, C = 0, D = 0;
-
+    public void testSample(List<String> lines, svm_model model) {
         for (String line : lines) {
             StringTokenizer st = new StringTokenizer(line, " \t\n\r\f:");
             double c = Double.parseDouble(st.nextToken());
@@ -45,29 +43,27 @@ public class LibSVMConfuseMatrix extends Config {
             }
             double pc = svm.svm_predict(model, x);
 
-            if (c != -1) {
-                if (pc == c) {
-                    A++;
-                } else {
-                    B++;
-                }
+            if (c == pc) {
+                maxtirx[new Double(c).intValue()][0] += 1;
             } else {
-                if (pc == c) {
-                    D++;
-                } else {
-                    C++;
-                }
+                maxtirx[new Double(c).intValue()][1] += 1;
+                maxtirx[new Double(pc).intValue()][2] += 1;
             }
         }
 
-        double recall = recall(A, B) * 100;
-        this.recalls.add(recall);
-        double precision = precision(A, C) * 100;
-        this.precisions.add(precision);
-        double fscore = fscore(A, B, C);
-        this.fscores.add(fscore);
+        for (int i = 1; i < maxtirx.length; i++) {
+            int A = maxtirx[i][0];
+            int B = maxtirx[i][1];
+            int C = maxtirx[i][2];
+            double recall = recall(A, B) * 100;
+            this.recalls.add(recall);
+            double precision = precision(A, C) * 100;
+            this.precisions.add(precision);
+            double fscore = fscore(A, B, C);
+            this.fscores.add(fscore);
 
-        this.rows.add(new Row(category, recall, precision, fscore, (int) A, (int) B, (int) C, (int) D));
+            this.rows.add(new Row(CATEGORY_CODE_NAME.get(i), recall, precision, fscore, (int) A, (int) B, (int) C));
+        }
     }
 
     public List<String> getReport() {
@@ -81,7 +77,7 @@ public class LibSVMConfuseMatrix extends Config {
         header.append(StringUtils.rightPad("PRECISION", COLUMN_WITDH[2]));
         header.append(StringUtils.rightPad("FSCORE", COLUMN_WITDH[3]));
         header.append(StringUtils.rightPad("COST", COLUMN_WITDH[4]));
-        header.append(StringUtils.rightPad("ABCD", COLUMN_WITDH[5]));
+        header.append(StringUtils.rightPad("ABC", COLUMN_WITDH[5]));
         report.add(header.toString());
 
         Collections.sort(rows);
@@ -137,9 +133,8 @@ public class LibSVMConfuseMatrix extends Config {
         public int    A;
         public int    B;
         public int    C;
-        public int    D;
 
-        public Row(String category, double recall, double precision, double fscore, int A, int B, int C, int D) {
+        public Row(String category, double recall, double precision, double fscore, int A, int B, int C) {
             this.category = category;
             this.recall = recall;
             this.precision = precision;
@@ -147,7 +142,6 @@ public class LibSVMConfuseMatrix extends Config {
             this.A = A;
             this.B = B;
             this.C = C;
-            this.D = D;
         }
 
         @Override
@@ -157,8 +151,8 @@ public class LibSVMConfuseMatrix extends Config {
             info.append(StringUtils.rightPad(df.format(recall), COLUMN_WITDH[1]));
             info.append(StringUtils.rightPad(df.format(precision), COLUMN_WITDH[2]));
             info.append(StringUtils.rightPad(df.format(fscore), COLUMN_WITDH[3]));
-            info.append(StringUtils.rightPad(String.valueOf(CATEGORY_PARAM.get(category).cost), COLUMN_WITDH[4]));
-            info.append(StringUtils.rightPad(this.A + " " + this.B + " " + this.C + " " + this.D, COLUMN_WITDH[5]));
+            info.append(StringUtils.rightPad(String.valueOf(CATEGORY_PARAM.get(category)), COLUMN_WITDH[4]));
+            info.append(StringUtils.rightPad(this.A + " " + this.B + " " + this.C, COLUMN_WITDH[5]));
             return info.toString();
         }
 

@@ -21,7 +21,6 @@ import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Word;
-import com.aliyun.classifier.svm.LibSVMScale.Range;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -30,7 +29,6 @@ import com.google.common.collect.Multiset;
 
 public class LibSVMTrain extends Config {
 
-    private long                               maxWordId         = 0;
     private int                                N                 = 0;
     private Map<String, Integer>               df                = Maps.newHashMap();
     private Map<String, Long>                  wordIdMap         = Maps.newHashMap();
@@ -49,56 +47,46 @@ public class LibSVMTrain extends Config {
 
         init();
 
+        List<String> svmLines = Lists.newArrayList();
+        List<String> svmtLines = Lists.newArrayList();
         for (final Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
-            if (CATEGORY_PARAM.containsKey(entry.getKey()) && CATEGORY_PARAM.get(entry.getKey()).isTrain) {
-                String category = entry.getKey();
-                Integer categoryId = entry.getValue();
+            String category = entry.getKey();
+            Integer categoryId = entry.getValue();
 
-                Multimap<Integer, List<Word>> svmFormats = processSvmFormat(category, categoryId);
-                Map<Integer, List<List<Word>>> svmDocsMap = Maps.newHashMap();
-                Map<Integer, List<List<Word>>> svmtDocsMap = Maps.newHashMap();
+            Multimap<Integer, List<Word>> svmFormats = processSvmFormat(category, categoryId);
+            Map<Integer, List<List<Word>>> svmDocsMap = Maps.newHashMap();
+            Map<Integer, List<List<Word>>> svmtDocsMap = Maps.newHashMap();
+            split(svmDocsMap, svmtDocsMap, svmFormats, 0.6);
 
-                split(svmDocsMap, svmtDocsMap, svmFormats, 0.6);
-                //        scale(svmDocsMap, svmtDocsMap, category);
+            build(svmLines, svmDocsMap);
+            build(svmtLines, svmtDocsMap);
 
-                List<String> svmLines = Lists.newArrayList();
-                build(svmLines, svmDocsMap);
-                try (FileWriter fw = new FileWriter(getFile(category, "svm"))) {
-                    IOUtils.writeLines(svmLines, "\n", fw);
-                }
-                List<String> svmtLines = Lists.newArrayList();
-                build(svmtLines, svmtDocsMap);
-                try (FileWriter fw = new FileWriter(getFile(category, "svmt"))) {
-                    IOUtils.writeLines(svmtLines, "\n", fw);
-                }
-
-                System.out.println("vectorization " + category + " done");
-            }
+            System.out.println("vectorization " + category + " done");
+        }
+        try (FileWriter fw = new FileWriter(getFile(CORPUS_NAME, "svm"))) {
+            IOUtils.writeLines(svmLines, "\n", fw);
+        }
+        try (FileWriter fw = new FileWriter(getFile(CORPUS_NAME, "svmt"))) {
+            IOUtils.writeLines(svmtLines, "\n", fw);
         }
     }
 
     public void train() throws Exception {
         final LibSVMConfuseMatrix cMatrix = new LibSVMConfuseMatrix();
 
-        for (final Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
-            if (CATEGORY_PARAM.containsKey(entry.getKey()) && CATEGORY_PARAM.get(entry.getKey()).isTrain) {
-                String category = entry.getKey();
-                Integer categoryId = entry.getValue();
+        svm_parameter param = getSvm_parameter();
+        svm_model model = null;
+        try (FileReader svmFr = new FileReader(getFile(CORPUS_NAME, "svm"))) {
+            List<String> svmLines = IOUtils.readLines(svmFr);
 
-                try (FileReader svmFr = new FileReader(getFile(category, "svm"));
-                        FileReader svmtFr = new FileReader(getFile(category, "svmt"))) {
-                    List<String> svmLines = IOUtils.readLines(svmFr);
-                    List<String> svmtLines = IOUtils.readLines(svmtFr);
+            svm_problem prob = getSvm_problem(svmLines, param);
+            model = svm.svm_train(prob, param);
+            svm.svm_save_model(getFile(CORPUS_NAME, "model").getAbsolutePath(), model);
+        }
 
-                    // train model
-                    svm_parameter param = getSvm_parameter(categoryId);
-                    svm_problem prob = getSvm_problem(svmLines, param);
-                    svm_model model = svm.svm_train(prob, param);
-                    svm.svm_save_model(getFile(category, "model").getAbsolutePath(), model);
-
-                    cMatrix.testSample(svmtLines, category, model, param);
-                }
-            }
+        try (FileReader svmtFr = new FileReader(getFile(CORPUS_NAME, "svmt"))) {
+            List<String> svmtLines = IOUtils.readLines(svmtFr);
+            cMatrix.testSample(svmtLines, model);
         }
 
         try (FileWriter fw = new FileWriter(REPORT, true)) {
@@ -125,19 +113,24 @@ public class LibSVMTrain extends Config {
                 ss = line.split(" +");
                 this.df.put(ss[1], Integer.parseInt(ss[2]));
                 this.wordIdMap.put(ss[1], Long.parseLong(ss[0]));
-                this.maxWordId = Long.parseLong(ss[0]);
             }
         }
     }
 
-    private svm_parameter getSvm_parameter(int categoryId) {
+    private svm_parameter getSvm_parameter() {
         svm_parameter param = new svm_parameter();
 
         param.svm_type = svm_parameter.C_SVC;
         // compute punish factor
-        int[] weightLabel = new int[0];
-        double[] weight = new double[0];
-        param.nr_weight = 0;
+        int[] weightLabel = new int[CATEGORY_PARAM.size()];
+        double[] weight = new double[CATEGORY_PARAM.size()];
+        int i = 0;
+        for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
+            weightLabel[i] = CATEGORY_NAME_CODE.get(entry.getKey());
+            weight[i] = entry.getValue();
+            i++;
+        }
+        param.nr_weight = CATEGORY_PARAM.size();
         param.weight_label = weightLabel;
         param.weight = weight;
         param.nu = 0.1;
@@ -147,7 +140,7 @@ public class LibSVMTrain extends Config {
         param.gamma = 0; // 1/num_features
         param.coef0 = 0;
         param.cache_size = 200;
-        param.C = getParameterC(categoryId);
+        param.C = 1;
         param.eps = 1e-3;
         param.p = 0.1;
         param.shrinking = 1;
@@ -189,28 +182,6 @@ public class LibSVMTrain extends Config {
             param.gamma = 1.0 / max_index;
 
         return prob;
-    }
-
-    @Deprecated
-    private void scale(Map<Integer, List<List<Word>>> svmMap, Map<Integer, List<List<Word>>> svmtMap, String category) {
-        List<Word> features = Lists.newArrayList();
-        for (List<List<Word>> a : svmMap.values()) {
-            for (List<Word> b : a) {
-                features.addAll(b);
-            }
-        }
-        Range range = LibSVMScale.range(features, maxWordId);
-        LibSVMScale.serialize(range, category);
-        for (List<List<Word>> a : svmMap.values()) {
-            for (List<Word> b : a) {
-                LibSVMScale.scale(b, range);
-            }
-        }
-        for (List<List<Word>> a : svmtMap.values()) {
-            for (List<Word> b : a) {
-                LibSVMScale.scale(b, range);
-            }
-        }
     }
 
     private void split(Map<Integer, List<List<Word>>> svmMap, Map<Integer, List<List<Word>>> svmtMap,
@@ -260,26 +231,18 @@ public class LibSVMTrain extends Config {
         Multimap<Integer, List<Word>> svmFormats = ArrayListMultimap.create();
         List<Word> featuresVector = null;
 
-        for (Map.Entry<String, Collection<Multiset<String>>> entry : categoryTokenized.asMap().entrySet()) {
-
-            int labelIndex = -1;
-            if (entry.getKey().equals(category)) {
-                labelIndex = categoryId;
+        for (Multiset<String> doc : categoryTokenized.get(category)) {
+            featuresVector = Lists.newArrayList();
+            for (Multiset.Entry<String> word : doc.entrySet()) {
+                if (!wordIdMap.containsKey(word.getElement()))
+                    continue;
+                Word w = Word.valueOf(wordIdMap.get(word.getElement()), word.getElement(), word.getCount(),
+                        df.get(word.getElement()));
+                w.setScore(weight(w, N));
+                featuresVector.add(w);
             }
-
-            for (Multiset<String> doc : entry.getValue()) {
-                featuresVector = Lists.newArrayList();
-                for (Multiset.Entry<String> word : doc.entrySet()) {
-                    if (!wordIdMap.containsKey(word.getElement()))
-                        continue;
-                    Word w = Word.valueOf(wordIdMap.get(word.getElement()), word.getElement(), word.getCount(),
-                            df.get(word.getElement()));
-                    w.setScore(weight(w, N));
-                    featuresVector.add(w);
-                }
-                Collections.sort(featuresVector);
-                svmFormats.put(labelIndex, featuresVector);
-            }
+            Collections.sort(featuresVector);
+            svmFormats.put(categoryId, featuresVector);
         }
 
         return svmFormats;

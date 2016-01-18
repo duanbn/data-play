@@ -83,12 +83,12 @@ public class LibSVMMain extends Config {
                         }
                         String htmlSource = WebUtil.download(s);
                         long start = System.currentTimeMillis();
-                        String[] tags = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
-                        String tagLine = "";
-                        for (String tag : tags) {
-                            tagLine += tag + " ";
-                        }
-                        outQ.offer(StringUtils.rightPad(s, 50) + StringUtils.rightPad(tagLine, 40)
+                        String tag = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
+                        //                        String tagLine = "";
+                        //                        for (String tag : tags) {
+                        //                            tagLine += tag + " ";
+                        //                        }
+                        outQ.offer(StringUtils.rightPad(s, 50) + StringUtils.rightPad(tag, 40)
                                 + (System.currentTimeMillis() - start) + "ms");
                     } catch (Exception e) {
                         System.out.println(e.getMessage());

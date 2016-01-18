@@ -20,12 +20,8 @@ public class LibSVMClassifierTest {
     @Test
     public void testOne() throws Exception {
         String htmlSource = WebUtil.download("http://www.jd.com/");
-        String[] cs = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
-        String cLine = "";
-        for (String c : cs) {
-            cLine += c + " ";
-        }
-        System.out.println(cLine);
+        String cs = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
+        System.out.println(cs);
     }
 
     @Test
@@ -40,13 +36,9 @@ public class LibSVMClassifierTest {
                     ss = line.split(",");
 
                     String htmlSource = WebUtil.download("http://" + ss[1]);
-                    String[] cs = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
+                    String cs = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
                     String domain = ss[1];
-                    String cLine = "";
-                    for (String c : cs) {
-                        cLine += c + " ";
-                    }
-                    bw.write(StringUtils.rightPad(domain, 40) + cLine);
+                    bw.write(StringUtils.rightPad(domain, 40) + cs);
                     bw.newLine();
                     bw.flush();
                 } catch (Exception e) {

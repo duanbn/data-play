@@ -23,27 +23,26 @@ import com.google.common.collect.Multiset;
 @SuppressWarnings("unchecked")
 public class Config {
 
-    protected static final ExecutorService              threadPool         = Executors
-                                                                                   .newFixedThreadPool(Runtime
-                                                                                           .getRuntime()
-                                                                                           .availableProcessors() * 5);
+    protected static final ExecutorService      threadPool         = Executors.newFixedThreadPool(Runtime.getRuntime()
+                                                                           .availableProcessors() * 5);
 
-    protected static String                             CORPUS_NAME;
-    protected static File                               CORPUS_DB;
-    protected static File                               TRAIN_DB;
+    protected static String                     CORPUS_NAME;
+    protected static File                       CORPUS_DB;
+    protected static File                       TRAIN_DB;
 
-    protected static File                               CHI;
-    protected static File                               DICT;
-    protected static File                               LABELINDEX;
-    protected static File                               REPORT;
+    protected static File                       CHI;
+    protected static File                       DICT;
+    protected static File                       LABELINDEX;
+    protected static File                       REPORT;
 
-    protected static final Analyzer                     analyzer           = new ComplexAnalyzer();
-    protected static final DefaultSimilarity            sim                = new DefaultSimilarity();
+    protected static final Analyzer             analyzer           = new ComplexAnalyzer();
+    protected static final DefaultSimilarity    sim                = new DefaultSimilarity();
 
-    protected static final Map<String, Integer>         CATEGORY_NAME_CODE = Maps.newTreeMap();
-    protected static final Map<Integer, String>         CATEGORY_CODE_NAME = Maps.newTreeMap();
+    protected static final Map<String, Integer> CATEGORY_NAME_CODE = Maps.newLinkedHashMap();
+    protected static final Map<Integer, String> CATEGORY_CODE_NAME = Maps.newLinkedHashMap();
 
-    protected static final Map<String, ConfigCategoryC> CATEGORY_PARAM     = Maps.newLinkedHashMap();
+    //    protected static double                     COST;
+    protected static final Map<String, Double>  CATEGORY_PARAM     = Maps.newLinkedHashMap();
 
     static {
         TRAIN_DB = new File(System.getProperty("system.prop.basedir"), "train");
@@ -68,17 +67,15 @@ public class Config {
         Iterator<String> keys = conf.getKeys("category");
         while (keys.hasNext()) {
             String key = keys.next();
-            String[] ss = conf.getString(key).split(" ");
-            CATEGORY_PARAM.put(key.substring("category.".length()),
-                    ConfigCategoryC.valueOf(Double.parseDouble(ss[0]), Boolean.parseBoolean(ss[1])));
+            CATEGORY_PARAM.put(key.substring("category.".length()), conf.getDouble(key));
         }
 
         // init category
         int categoryId = 0;
-        for (String category : CATEGORY_PARAM.keySet()) {
+        for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
             categoryId++;
-            CATEGORY_CODE_NAME.put(categoryId, category);
-            CATEGORY_NAME_CODE.put(category, categoryId);
+            CATEGORY_CODE_NAME.put(categoryId, entry.getKey());
+            CATEGORY_NAME_CODE.put(entry.getKey(), categoryId);
         }
     }
 
@@ -111,25 +108,12 @@ public class Config {
         return words;
     }
 
-    protected static double getParameterC(int categoryId) {
-        String category = CATEGORY_CODE_NAME.get(categoryId);
-
-        ConfigCategoryC param = CATEGORY_PARAM.get(category);
-        if (param != null) {
-            return param.cost;
-        } else {
-            return 1.0;
-        }
-    }
-
     public static class ConfigCategoryC {
-        public double  cost;
-        public boolean isTrain;
+        public double cost;
 
-        public static ConfigCategoryC valueOf(double cost, boolean isTrain) {
+        public static ConfigCategoryC valueOf(double cost) {
             ConfigCategoryC instance = new ConfigCategoryC();
             instance.cost = cost;
-            instance.isTrain = isTrain;
             return instance;
         }
     }
