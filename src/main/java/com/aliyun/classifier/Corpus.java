@@ -19,7 +19,7 @@ public class Corpus {
 
     public Multiset<String>              featureDict       = ConcurrentHashMultiset.create();
 
-    public List<Word>                    features          = Lists.newArrayList();
+    public List<Feature>                    features          = Lists.newArrayList();
 
     public Map<String, Integer>          df                = Maps.newHashMap();
 

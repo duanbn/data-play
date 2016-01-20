@@ -1,4 +1,4 @@
-package com.aliyun.classifier;
+package com.aliyun.classifier.fs;
 
 import java.util.Map;
 import java.util.Set;
@@ -6,6 +6,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 
+import com.aliyun.classifier.Config;
+import com.aliyun.classifier.Corpus;
+import com.aliyun.classifier.Feature;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 
@@ -30,7 +33,7 @@ public class CHIFeatureSelector extends Config {
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
-        for (Word feature : corpus.features) {
+        for (Feature feature : corpus.features) {
             threadPool.submit(new ComputeTask(corpus.categoryTokenized, corpus.N, CATEGORY_NAME_CODE.keySet(), feature,
                     cdl));
         }
@@ -45,11 +48,11 @@ public class CHIFeatureSelector extends Config {
         private Multimap<String, Set<String>> categoryTokenized;
         private int                           N;
         private Set<String>                   categories;
-        private Word                          feature;
+        private Feature                          feature;
         private CountDownLatch                cdl;
 
         public ComputeTask(Multimap<String, Set<String>> categoryTokenized, int N, Set<String> categories,
-                           Word feature, CountDownLatch cdl) {
+                           Feature feature, CountDownLatch cdl) {
             this.categoryTokenized = categoryTokenized;
             this.N = N;
             this.categories = categories;
@@ -92,7 +95,7 @@ public class CHIFeatureSelector extends Config {
             return max;
         }
 
-        private double computeCategoryCHI(Word feature, String category) {
+        private double computeCategoryCHI(Feature feature, String category) {
             double A = 0, B = 0, C = 0, D = 0;
             for (String key : categoryTokenized.keySet()) {
                 if (key.equals(category)) {

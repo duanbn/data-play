@@ -9,14 +9,14 @@ import java.util.Map;
 import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
-import com.aliyun.classifier.Word;
+import com.aliyun.classifier.Feature;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
 
 public class LibSVMTextVectorizer extends Config {
 
-    private static final Map<String, Word> map = Maps.newHashMap();
+    private static final Map<String, Feature> map = Maps.newHashMap();
 
     private static int                     N;
 
@@ -27,21 +27,21 @@ public class LibSVMTextVectorizer extends Config {
             N = Integer.parseInt(lines.get(0));
             for (String line : lines.subList(1, lines.size())) {
                 ss = line.split(" ");
-                map.put(ss[1], Word.valueOf(Long.parseLong(ss[0]), ss[1], 0, Integer.parseInt(ss[2])));
+                map.put(ss[1], Feature.valueOf(Long.parseLong(ss[0]), ss[1], 0, Integer.parseInt(ss[2])));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static List<Word> vectorization(String text) throws Exception {
-        List<Word> result = Lists.newArrayList();
+    public static List<Feature> vectorization(String text) throws Exception {
+        List<Feature> result = Lists.newArrayList();
         Multiset<String> doc = analysis(new StringReader(text));
         for (Multiset.Entry<String> word : doc.entrySet()) {
             if (!map.containsKey(word.getElement())) {
                 continue;
             }
-            Word w = map.get(word.getElement());
+            Feature w = map.get(word.getElement());
             w.setTf(word.getCount());
             w.setScore(weight(w, N));
             result.add(w);

@@ -41,7 +41,6 @@ public class Config {
     protected static final Map<String, Integer> CATEGORY_NAME_CODE = Maps.newLinkedHashMap();
     protected static final Map<Integer, String> CATEGORY_CODE_NAME = Maps.newLinkedHashMap();
 
-    //    protected static double                     COST;
     protected static final Map<String, Double>  CATEGORY_PARAM     = Maps.newLinkedHashMap();
 
     static {
@@ -83,7 +82,7 @@ public class Config {
         return new File(TRAIN_DB, name + "." + prefix);
     }
 
-    protected static double weight(Word word, int N) {
+    protected static double weight(Feature word, int N) {
         return sim.tf(word.getTf()) * sim.idf(word.getDf(), N);
     }
 

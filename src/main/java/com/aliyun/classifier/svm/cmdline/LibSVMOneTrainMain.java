@@ -1,13 +1,13 @@
 package com.aliyun.classifier.svm.cmdline;
 
 import com.aliyun.classifier.Config;
-import com.aliyun.classifier.svm.LibSVMTrain;
+import com.aliyun.classifier.svm.LibSVMOneTrain;
 
-public class LibSVMTrainMain extends Config {
+public class LibSVMOneTrainMain extends Config {
 
     public static void main(String[] args) throws Exception {
 
-        new LibSVMTrain().run();
+        new LibSVMOneTrain().run();
 
         System.exit(0);
 

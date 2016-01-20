@@ -11,7 +11,7 @@ import java.util.Map;
 import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
-import com.aliyun.classifier.Word;
+import com.aliyun.classifier.Feature;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -28,7 +28,7 @@ public class LibSVMScale extends Config {
             String[] ss = null;
             for (String line : lines) {
                 ss = line.split(" ");
-                Word word = Word.valueOf(Long.parseLong(ss[0]));
+                Feature word = Feature.valueOf(Long.parseLong(ss[0]));
                 word.setMinScore(Double.parseDouble(ss[1]));
                 word.setMaxScore(Double.parseDouble(ss[2]));
                 range.put(word);
@@ -40,9 +40,9 @@ public class LibSVMScale extends Config {
     }
 
     public static void serialize(Range range, String category) {
-        Map<Long, Word> data = range.getData();
+        Map<Long, Feature> data = range.getData();
         List<String> lines = Lists.newArrayList();
-        for (Map.Entry<Long, Word> entry : data.entrySet()) {
+        for (Map.Entry<Long, Feature> entry : data.entrySet()) {
             StringBuilder line = new StringBuilder();
             line.append(entry.getValue().getId() + " " + entry.getValue().getMinScore() + " "
                     + entry.getValue().getMaxScore());
@@ -55,14 +55,14 @@ public class LibSVMScale extends Config {
         }
     }
 
-    public static void scale(List<Word> doc, Range range) {
+    public static void scale(List<Feature> doc, Range range) {
         double value = 0, max = 0, min = 0;
-        Iterator<Word> it = doc.iterator();
-        Word w = null;
+        Iterator<Feature> it = doc.iterator();
+        Feature w = null;
         while (it.hasNext()) {
             w = it.next();
             value = w.getScore();
-            Word rangeWord = range.get(w.getId());
+            Feature rangeWord = range.get(w.getId());
             if (rangeWord != null) {
                 max = rangeWord.getMaxScore();
                 min = rangeWord.getMinScore();
@@ -90,7 +90,7 @@ public class LibSVMScale extends Config {
         }
     }
 
-    public static Range range(List<Word> features, long maxWordId) {
+    public static Range range(List<Feature> features, long maxWordId) {
         Range range = new Range();
 
         double[] max = new double[(int) maxWordId + 1];
@@ -99,11 +99,11 @@ public class LibSVMScale extends Config {
             max[i] = -Double.MAX_VALUE;
             min[i] = Double.MAX_VALUE;
         }
-        for (Word word : features) {
+        for (Feature word : features) {
             max[(int) word.getId()] = Math.max(word.getScore(), max[(int) word.getId()]);
             min[(int) word.getId()] = Math.min(word.getScore(), min[(int) word.getId()]);
         }
-        for (Word word : features) {
+        for (Feature word : features) {
             word.setMaxScore(Math.max(max[(int) word.getId()], 0));
             word.setMinScore(Math.min(min[(int) word.getId()], 0));
             range.put(word);
@@ -113,17 +113,17 @@ public class LibSVMScale extends Config {
     }
 
     public static class Range {
-        Map<Long, Word> data = Maps.newTreeMap();
+        Map<Long, Feature> data = Maps.newTreeMap();
 
-        public Map<Long, Word> getData() {
+        public Map<Long, Feature> getData() {
             return this.data;
         }
 
-        public void put(Word word) {
+        public void put(Feature word) {
             data.put(word.getId(), word);
         }
 
-        public Word get(long wordId) {
+        public Feature get(long wordId) {
             return data.get(wordId);
         }
 

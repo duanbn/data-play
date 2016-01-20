@@ -1,12 +1,12 @@
 package com.aliyun.classifier.svm.cmdline;
 
-import com.aliyun.classifier.svm.LibSVMDf;
+import com.aliyun.classifier.svm.LibSVMDict;
 
 public class LibSVMDictMain {
 
     public static void main(String[] args) throws Exception {
 
-        new LibSVMDf().run();
+        new LibSVMDict().run();
 
         System.exit(0);
 

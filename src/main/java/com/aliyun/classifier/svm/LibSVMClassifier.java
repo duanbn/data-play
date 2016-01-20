@@ -1,9 +1,11 @@
 package com.aliyun.classifier.svm;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import libsvm.svm;
 import libsvm.svm_model;
@@ -12,16 +14,19 @@ import libsvm.svm_node;
 import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
-import com.aliyun.classifier.Word;
+import com.aliyun.classifier.Feature;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 public class LibSVMClassifier extends Config {
 
-    private static final List<String>     categories = Lists.newArrayList();
-    //    private static final Map<String, svm_model> models     = Maps.newTreeMap();
-    private static svm_model              svmModel;
+    private static final List<String>           categories = Lists.newArrayList();
 
-    private static final LibSVMClassifier instance   = new LibSVMClassifier();
+    private static final Map<String, svm_model> models     = Maps.newTreeMap();
+
+    private static svm_model                    svmModel;
+
+    private static final LibSVMClassifier       instance   = new LibSVMClassifier();
 
     static {
         try (BufferedReader br = new BufferedReader(new FileReader(LABELINDEX))) {
@@ -40,15 +45,15 @@ public class LibSVMClassifier extends Config {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        //        for (String category : categories) {
-        //            try {
-        //                File model = getFile(category, "model");
-        //                models.put(category, svm.svm_load_model(new BufferedReader(new FileReader(model))));
-        //                System.out.println("load " + model.getAbsolutePath());
-        //            } catch (IOException e) {
-        //                throw new RuntimeException(e);
-        //            }
-        //        }
+        for (String category : categories) {
+            try {
+                File model = getFile(category, "model");
+                models.put(category, svm.svm_load_model(new BufferedReader(new FileReader(model))));
+                System.out.println("load " + model.getAbsolutePath());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private LibSVMClassifier() {
@@ -58,31 +63,39 @@ public class LibSVMClassifier extends Config {
         return instance;
     }
 
+    public String[] classifyFull(String text) throws Exception {
+        List<String> result = Lists.newArrayList();
+        for (Map.Entry<String, svm_model> entry : models.entrySet()) {
+            double v = svm.svm_predict(entry.getValue(), getX(text));
+            if (v > 0) {
+                result.add(entry.getKey());
+            }
+        }
+        if (result.isEmpty()) {
+            result.add("unknow");
+        }
+
+        return result.toArray(new String[result.size()]);
+    }
+
     public String classify(String text) throws Exception {
-        List<Word> words = LibSVMTextVectorizer.vectorization(text);
+
+        double v = svm.svm_predict(svmModel, getX(text));
+
+        return CATEGORY_CODE_NAME.get(new Double(v).intValue());
+    }
+
+    private svm_node[] getX(String text) throws Exception {
+        List<Feature> words = LibSVMTextVectorizer.vectorization(text);
         svm_node[] x = new svm_node[words.size()];
         svm_node node = null;
         int index = 0;
-        for (Word word : words) {
+        for (Feature word : words) {
             node = new svm_node();
             node.index = (int) word.getId();
             node.value = word.getScore();
             x[index++] = node;
         }
-
-        double v = svm.svm_predict(svmModel, x);
-
-        //        List<String> result = Lists.newArrayList();
-        //        for (Map.Entry<String, svm_model> entry : models.entrySet()) {
-        //            double v = svm.svm_predict(entry.getValue(), x);
-        //            if (v > 0) {
-        //                result.add(entry.getKey());
-        //            }
-        //        }
-        //        if (result.isEmpty()) {
-        //            result.add("unknow");
-        //        }
-
-        return CATEGORY_CODE_NAME.get(new Double(v).intValue());
+        return x;
     }
 }

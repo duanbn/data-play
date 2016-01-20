@@ -1,10 +1,14 @@
-package com.aliyun.classifier;
+package com.aliyun.classifier.fs;
 
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
+
+import com.aliyun.classifier.Config;
+import com.aliyun.classifier.Corpus;
+import com.aliyun.classifier.Feature;
 
 public class IGFeatureSelector extends Config {
 
@@ -31,7 +35,7 @@ public class IGFeatureSelector extends Config {
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
-        for (Word feature : corpus.features) {
+        for (Feature feature : corpus.features) {
             threadPool.submit(new ComputeTask(corpus, feature, HC, cdl));
         }
 
@@ -45,11 +49,11 @@ public class IGFeatureSelector extends Config {
     private static class ComputeTask implements Runnable {
 
         private Corpus         corpus;
-        private Word           feature;
+        private Feature           feature;
         private double         HC;
         private CountDownLatch cdl;
 
-        public ComputeTask(Corpus corpus, Word feature, double HC, CountDownLatch cdl) {
+        public ComputeTask(Corpus corpus, Feature feature, double HC, CountDownLatch cdl) {
             this.corpus = corpus;
             this.feature = feature;
             this.HC = HC;

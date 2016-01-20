@@ -11,12 +11,12 @@ import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Corpus;
-import com.aliyun.classifier.IGFeatureSelector;
-import com.aliyun.classifier.Word;
+import com.aliyun.classifier.Feature;
+import com.aliyun.classifier.fs.IGFeatureSelector;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multiset;
 
-public class LibSVMDf extends Config {
+public class LibSVMDict extends Config {
 
     public void run() throws Exception {
         Corpus corpus = new Corpus();
@@ -49,7 +49,7 @@ public class LibSVMDf extends Config {
 
         for (Multiset.Entry<String> entry : corpus.featureDict.entrySet()) {
             if (entry.getCount() > 2 && entry.getElement().length() > 1) {
-                corpus.features.add(Word.valueOf(entry.getElement()));
+                corpus.features.add(Feature.valueOf(entry.getElement()));
             }
         }
 
@@ -59,9 +59,9 @@ public class LibSVMDf extends Config {
         //            new CHIFeatureSelector(N, categoryTokenized, features).run();
         new IGFeatureSelector(corpus).run();
 
-        Collections.sort(corpus.features, new Comparator<Word>() {
+        Collections.sort(corpus.features, new Comparator<Feature>() {
             @Override
-            public int compare(Word o1, Word o2) {
+            public int compare(Feature o1, Feature o2) {
                 if (o1.getQuality() == o2.getQuality()) {
                     return 0;
                 }
@@ -73,7 +73,7 @@ public class LibSVMDf extends Config {
         List<String> lines = Lists.newArrayList(String.valueOf(corpus.N));
         long wordId = 0;
         StringBuilder line = null;
-        for (Word word : corpus.features) {
+        for (Feature word : corpus.features) {
             wordId++;
             line = new StringBuilder();
             line.append(wordId).append(" ");

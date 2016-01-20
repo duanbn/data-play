@@ -17,24 +17,25 @@ import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
 
-public class LibSVMTrain extends Config {
+public class LibSVMOneTrain extends Config {
 
     public void run() throws Exception {
-        final LibSVMConfuseMatrix cMatrix = new LibSVMConfuseMatrix();
+        LibSVMOneConfuseMatrix cMatrix = new LibSVMOneConfuseMatrix();
 
         svm_parameter param = getSvm_parameter();
         svm_model model = null;
-        try (FileReader svmFr = new FileReader(getFile(CORPUS_NAME, "svm"))) {
-            List<String> svmLines = IOUtils.readLines(svmFr);
+        for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
+            try (FileReader svmFr = new FileReader(getFile(entry.getKey(), "svm"));
+                    FileReader svmtFr = new FileReader(getFile(entry.getKey(), "svmt"))) {
+                List<String> svmLines = IOUtils.readLines(svmFr);
 
-            svm_problem prob = getSvm_problem(svmLines, param);
-            model = svm.svm_train(prob, param);
-            svm.svm_save_model(getFile(CORPUS_NAME, "model").getAbsolutePath(), model);
-        }
+                svm_problem prob = getSvm_problem(svmLines, param);
+                model = svm.svm_train(prob, param);
+                svm.svm_save_model(getFile(entry.getKey(), "model").getAbsolutePath(), model);
 
-        try (FileReader svmtFr = new FileReader(getFile(CORPUS_NAME, "svmt"))) {
-            List<String> svmtLines = IOUtils.readLines(svmtFr);
-            cMatrix.testSample(svmtLines, model);
+                List<String> svmtLines = IOUtils.readLines(svmtFr);
+                cMatrix.testSample(entry.getKey(), svmtLines, model);
+            }
         }
 
         try (FileWriter fw = new FileWriter(REPORT, true)) {
@@ -47,20 +48,14 @@ public class LibSVMTrain extends Config {
     private svm_parameter getSvm_parameter() {
         svm_parameter param = new svm_parameter();
 
-        param.svm_type = svm_parameter.C_SVC;
+        param.svm_type = svm_parameter.ONE_CLASS;
         // compute punish factor
-        int[] weightLabel = new int[CATEGORY_PARAM.size()];
-        double[] weight = new double[CATEGORY_PARAM.size()];
-        int i = 0;
-        for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
-            weightLabel[i] = CATEGORY_NAME_CODE.get(entry.getKey());
-            weight[i] = entry.getValue();
-            i++;
-        }
-        param.nr_weight = CATEGORY_PARAM.size();
+        int[] weightLabel = new int[0];
+        double[] weight = new double[0];
+        param.nr_weight = 0;
         param.weight_label = weightLabel;
         param.weight = weight;
-        param.nu = 0.1;
+        param.nu = 0.005;
 
         param.kernel_type = svm_parameter.RBF;
         param.degree = 3;

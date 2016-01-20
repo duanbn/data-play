@@ -1,6 +1,6 @@
 package com.aliyun.classifier;
 
-public class Word implements Comparable<Word> {
+public class Feature implements Comparable<Feature> {
 
     private long   id;
 
@@ -18,23 +18,23 @@ public class Word implements Comparable<Word> {
 
     private double quality;
 
-    private Word() {
+    private Feature() {
     }
 
-    public static Word valueOf(String value) {
-        Word w = new Word();
+    public static Feature valueOf(String value) {
+        Feature w = new Feature();
         w.setValue(value);
         return w;
     }
 
-    public static Word valueOf(long id) {
-        Word w = new Word();
+    public static Feature valueOf(long id) {
+        Feature w = new Feature();
         w.id = id;
         return w;
     }
 
-    public static Word valueOf(long id, String value, int tf, int df) {
-        Word w = new Word();
+    public static Feature valueOf(long id, String value, int tf, int df) {
+        Feature w = new Feature();
         w.id = id;
         w.value = value;
         w.tf = tf;
@@ -43,7 +43,7 @@ public class Word implements Comparable<Word> {
     }
 
     @Override
-    public int compareTo(Word o) {
+    public int compareTo(Feature o) {
         return (int) (this.getId() - o.getId());
     }
 
