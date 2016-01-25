@@ -1,5 +1,8 @@
 package com.aliyun.classifier.fs;
 
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
@@ -9,6 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Corpus;
 import com.aliyun.classifier.Feature;
+import com.google.common.collect.Lists;
 
 public class IGFeatureSelector extends Config {
 
@@ -30,30 +34,55 @@ public class IGFeatureSelector extends Config {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                System.out.print(".");
+                System.out.println(cdl.getCount() + "/" + corpus.features.size());
             }
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
+        List<Feature> features = Lists.newCopyOnWriteArrayList();
         for (Feature feature : corpus.features) {
-            threadPool.submit(new ComputeTask(corpus, feature, HC, cdl));
+            threadPool.submit(new ComputeTask(features, corpus, feature, HC, cdl));
         }
 
         cdl.await();
         timer.cancel();
 
-        System.out.println("compute ig done " + (System.currentTimeMillis() - start) + "ms");
+        corpus.features.clear();
+        corpus.features.addAll(features);
+        Collections.sort(corpus.features, new Comparator<Feature>() {
+            @Override
+            public int compare(Feature o1, Feature o2) {
+                if (o1.getIgScore() == o2.getIgScore()) {
+                    return 0;
+                }
+                return o1.getIgScore() > o2.getIgScore() ? -1 : 1;
+            }
+        });
 
+        // do norm
+        double max = corpus.features.get(0).getIgScore();
+        double min = corpus.features.get(corpus.features.size() - 1).getIgScore();
+        for (Feature feature : corpus.features) {
+            if (max == min) {
+                continue;
+            }
+            double normIg = (feature.getIgScore() - min) / (max - min);
+            feature.setIgScore(normIg);
+        }
+
+        System.out.println("compute ig done " + (System.currentTimeMillis() - start) + "ms");
     }
 
     private static class ComputeTask implements Runnable {
 
+        private List<Feature>  features;
         private Corpus         corpus;
-        private Feature           feature;
+        private Feature        feature;
         private double         HC;
         private CountDownLatch cdl;
 
-        public ComputeTask(Corpus corpus, Feature feature, double HC, CountDownLatch cdl) {
+        public ComputeTask(List<Feature> features, Corpus corpus, Feature feature, double HC, CountDownLatch cdl) {
+            this.features = features;
             this.corpus = corpus;
             this.feature = feature;
             this.HC = HC;
@@ -78,8 +107,12 @@ public class IGFeatureSelector extends Config {
                 }
                 PT = p(corpus.df.get(feature.getValue()), corpus.N);
                 NPT = p(corpus.N - corpus.df.get(feature.getValue()), corpus.N);
+
                 double ig = -HC + (PT * TC) + (NPT * NTC);
-                feature.setQuality(ig);
+                if (ig >= IG_THRESHOLD) {
+                    feature.setIgScore(ig);
+                    features.add(feature);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {

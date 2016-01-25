@@ -70,26 +70,26 @@ public class LibSVMMain extends Config {
         final LibSVMClassifier classifier = LibSVMClassifier.getInstance();
 
         final CountDownLatch cdl = new CountDownLatch(lines.size());
-        for (final String url : lines) {
+        for (final String domain : lines) {
             threadPool.submit(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        String s = null;
-                        if (url.startsWith("http://")) {
-                            s = url;
+                        String url = null;
+                        if (domain.startsWith("http://")) {
+                            url = domain;
                         } else {
-                            s = "http://" + url;
+                            url = "http://" + domain;
                         }
-                        String htmlSource = WebUtil.download(s);
+                        String htmlSource = WebUtil.download(url);
                         long start = System.currentTimeMillis();
-                        String oneTag = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
-                        String[] tags = classifier.classifyFull(HtmlUtil.extract(htmlSource).getSimipleContent());
-                        String tagLine = "[" + oneTag + "] ";
-                        for (String tag : tags) {
-                            tagLine += tag + " ";
-                        }
-                        outQ.offer(StringUtils.rightPad(s, 50) + StringUtils.rightPad(tagLine, 80)
+                        String oneTag = classifier.classify(domain, HtmlUtil.extract(htmlSource).getSimipleContent());
+                        //                        String[] tags = classifier.classifyFull(HtmlUtil.extract(htmlSource).getSimipleContent());
+                        //                        String tagLine = "[" + oneTag + "] ";
+                        //                        for (String tag : tags) {
+                        //                            tagLine += tag + " ";
+                        //                        }
+                        outQ.offer(StringUtils.rightPad(url, 50) + StringUtils.rightPad(oneTag, 30)
                                 + (System.currentTimeMillis() - start) + "ms");
                     } catch (Exception e) {
                         System.out.println(e.getMessage());

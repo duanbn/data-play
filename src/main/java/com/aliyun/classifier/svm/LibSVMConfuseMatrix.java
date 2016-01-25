@@ -18,7 +18,7 @@ import com.google.common.math.DoubleMath;
 public class LibSVMConfuseMatrix extends Config {
 
     private static final DecimalFormat df           = new DecimalFormat("0.######");
-    private static final int[]         COLUMN_WITDH = new int[] { 30, 15, 15, 15, 10, 20 };
+    private static final int[]         COLUMN_WITDH = new int[] { 30, 15, 15, 15, 20 };
 
     private int[][]                    maxtirx      = new int[CATEGORY_PARAM.size() + 1][3];
     private List<Row>                  rows         = Lists.newArrayList();
@@ -76,21 +76,24 @@ public class LibSVMConfuseMatrix extends Config {
         header.append(StringUtils.rightPad("RECALL", COLUMN_WITDH[1]));
         header.append(StringUtils.rightPad("PRECISION", COLUMN_WITDH[2]));
         header.append(StringUtils.rightPad("FSCORE", COLUMN_WITDH[3]));
-        header.append(StringUtils.rightPad("COST", COLUMN_WITDH[4]));
-        header.append(StringUtils.rightPad("ABC", COLUMN_WITDH[5]));
+        header.append(StringUtils.rightPad("ABC", COLUMN_WITDH[4]));
         report.add(header.toString());
 
         Collections.sort(rows);
         for (Row row : rows) {
             report.add(row.toString());
         }
-        report.add(" ");
+        report.add("---------------------------------------------");
         report.add(StringUtils.rightPad("RECALL:", COLUMN_WITDH[0])
                 + StringUtils.rightPad(df.format(DoubleMath.mean(recalls)), COLUMN_WITDH[1]));
         report.add(StringUtils.rightPad("PRECISION:", COLUMN_WITDH[0])
                 + StringUtils.rightPad(df.format(DoubleMath.mean(precisions)), COLUMN_WITDH[1]));
         report.add(StringUtils.rightPad("FSCORE:", COLUMN_WITDH[0])
                 + StringUtils.rightPad(df.format(DoubleMath.mean(fscores)), COLUMN_WITDH[1]));
+        report.add(StringUtils.rightPad("COST:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(String.valueOf(COST), COLUMN_WITDH[1]));
+        report.add(StringUtils.rightPad("GAMMA:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(String.valueOf(GAMMA), COLUMN_WITDH[1]));
         return report;
     }
 
@@ -146,13 +149,12 @@ public class LibSVMConfuseMatrix extends Config {
 
         @Override
         public String toString() {
-            StringBuilder info = new StringBuilder(StringUtils.rightPad("[" + category.toUpperCase() + "]",
+            StringBuilder info = new StringBuilder(StringUtils.rightPad("[" + category.toLowerCase() + "]",
                     COLUMN_WITDH[0]));
             info.append(StringUtils.rightPad(df.format(recall), COLUMN_WITDH[1]));
             info.append(StringUtils.rightPad(df.format(precision), COLUMN_WITDH[2]));
             info.append(StringUtils.rightPad(df.format(fscore), COLUMN_WITDH[3]));
-            info.append(StringUtils.rightPad(String.valueOf(CATEGORY_PARAM.get(category)), COLUMN_WITDH[4]));
-            info.append(StringUtils.rightPad(this.A + " " + this.B + " " + this.C, COLUMN_WITDH[5]));
+            info.append(StringUtils.rightPad(this.A + " " + this.B + " " + this.C, COLUMN_WITDH[4]));
             return info.toString();
         }
 

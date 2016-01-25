@@ -26,14 +26,20 @@ public class Config {
     protected static final ExecutorService      threadPool         = Executors.newFixedThreadPool(Runtime.getRuntime()
                                                                            .availableProcessors() * 5);
 
-    protected static String                     CORPUS_NAME;
-    protected static File                       CORPUS_DB;
-    protected static File                       TRAIN_DB;
+    protected static final double               IG_THRESHOLD;
+    protected static final double               COST;
+    protected static final double               GAMMA;
 
-    protected static File                       CHI;
-    protected static File                       DICT;
-    protected static File                       LABELINDEX;
-    protected static File                       REPORT;
+    protected static final String               CORPUS_NAME;
+    protected static final File                 CORPUS_DB;
+    protected static final File                 TRAIN_DB;
+
+    protected static final File                 CATEGORYTF;
+    protected static final File                 CHI;
+    protected static final File                 DICT;
+    protected static final File                 LABELINDEX;
+    protected static final File                 REPORT;
+    protected static final File                 RANGE;
 
     protected static final Analyzer             analyzer           = new ComplexAnalyzer();
     protected static final DefaultSimilarity    sim                = new DefaultSimilarity();
@@ -55,12 +61,19 @@ public class Config {
         } catch (Exception e) {
             throw new RuntimeException("load properties fail", e);
         }
+
         CORPUS_NAME = conf.getString("corpus.name");
+        CORPUS_DB = new File(conf.getString("corpus.directory"));
+        IG_THRESHOLD = conf.getDouble("corpus.ig.threshold");
+        COST = conf.getDouble("corpus.cost");
+        GAMMA = conf.getDouble("corpus.gamma");
+
+        CATEGORYTF = new File(TRAIN_DB, CORPUS_NAME + ".tf");
         CHI = new File(TRAIN_DB, CORPUS_NAME + ".chi");
         DICT = new File(TRAIN_DB, CORPUS_NAME + ".dict");
         LABELINDEX = new File(TRAIN_DB, CORPUS_NAME + ".labelindex");
         REPORT = new File(TRAIN_DB, CORPUS_NAME + ".report");
-        CORPUS_DB = new File(conf.getString("corpus.directory"));
+        RANGE = new File(TRAIN_DB, CORPUS_NAME + ".range");
 
         // init category cost
         Iterator<String> keys = conf.getKeys("category");
@@ -82,8 +95,8 @@ public class Config {
         return new File(TRAIN_DB, name + "." + prefix);
     }
 
-    protected static double weight(Feature word, int N) {
-        return sim.tf(word.getTf()) * sim.idf(word.getDf(), N);
+    protected static double weight(int tf, int df, int N) {
+        return sim.tf(tf) * sim.idf(df, N);
     }
 
     protected static Multiset<String> analysis(File corpus) throws Exception {

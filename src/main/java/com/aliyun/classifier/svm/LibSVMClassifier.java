@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
 
 import libsvm.svm;
 import libsvm.svm_model;
@@ -63,10 +64,10 @@ public class LibSVMClassifier extends Config {
         return instance;
     }
 
-    public String[] classifyFull(String text) throws Exception {
+    public String[] classifyFull(String domain, String text) throws Exception {
         List<String> result = Lists.newArrayList();
         for (Map.Entry<String, svm_model> entry : models.entrySet()) {
-            double v = svm.svm_predict(entry.getValue(), getX(text));
+            double v = svm.svm_predict(entry.getValue(), getX(domain, text));
             if (v > 0) {
                 result.add(entry.getKey());
             }
@@ -78,22 +79,23 @@ public class LibSVMClassifier extends Config {
         return result.toArray(new String[result.size()]);
     }
 
-    public String classify(String text) throws Exception {
+    public String classify(String domain, String text) throws Exception {
 
-        double v = svm.svm_predict(svmModel, getX(text));
+        double v = svm.svm_predict(svmModel, getX(domain, text));
 
         return CATEGORY_CODE_NAME.get(new Double(v).intValue());
     }
 
-    private svm_node[] getX(String text) throws Exception {
-        List<Feature> words = LibSVMTextVectorizer.vectorization(text);
+    private svm_node[] getX(String domain, String text) throws Exception {
+        SortedSet<Feature> words = LibSVMTextVectorizer.vectorization(text);
+        System.out.println(domain + " " + words);
         svm_node[] x = new svm_node[words.size()];
         svm_node node = null;
         int index = 0;
         for (Feature word : words) {
             node = new svm_node();
             node.index = (int) word.getId();
-            node.value = word.getScore();
+            node.value = word.getWeight();
             x[index++] = node;
         }
         return x;

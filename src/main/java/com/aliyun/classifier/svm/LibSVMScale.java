@@ -4,34 +4,44 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.SortedSet;
 
 import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Feature;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 public class LibSVMScale extends Config {
 
-    public static final DecimalFormat df    = new DecimalFormat("0.000000");
-    public static final double        lower = 0;
-    public static final double        upper = 1;
+    public static final DecimalFormat df = new DecimalFormat("0.000000");
 
-    public static Range materialize(String category) {
-        Range range = new Range();
-        try (FileReader fr = new FileReader(getFile(category, "range"))) {
+    public static void scale(SortedSet<Feature> doc, Range range) {
+        double weight = 0, sum = 0;
+        for (Feature feature : doc) {
+            weight = feature.getWeight();
+
+            sum = range.sum[feature.getId()][0];
+
+            weight = weight / sum + feature.getChiScore();
+
+            feature.setWeight(Double.parseDouble(df.format(weight)));
+        }
+    }
+
+    public static Range materialize() {
+        Range range = null;
+        try (FileReader fr = new FileReader(RANGE)) {
             List<String> lines = IOUtils.readLines(fr);
+            range = new Range(lines.size());
             String[] ss = null;
             for (String line : lines) {
                 ss = line.split(" ");
-                Feature word = Feature.valueOf(Long.parseLong(ss[0]));
-                word.setMinScore(Double.parseDouble(ss[1]));
-                word.setMaxScore(Double.parseDouble(ss[2]));
-                range.put(word);
+                int featureId = Integer.parseInt(ss[0]);
+                range.max[featureId][0] = Double.parseDouble(ss[1]);
+                range.min[featureId][0] = Double.parseDouble(ss[2]);
+                range.sum[featureId][0] = Double.parseDouble(ss[3]);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -39,94 +49,49 @@ public class LibSVMScale extends Config {
         return range;
     }
 
-    public static void serialize(Range range, String category) {
-        Map<Long, Feature> data = range.getData();
+    public static Range range(List<Feature> features, int maxId) {
+        Range range = new Range(maxId);
+
+        for (Feature feature : features) {
+            range.max[feature.getId()][0] = Math.max(feature.getWeight(), range.max[feature.getId()][0]);
+            range.min[feature.getId()][0] = Math.min(feature.getWeight(), range.min[feature.getId()][0]);
+            range.sum[feature.getId()][0] += feature.getWeight();
+        }
+
         List<String> lines = Lists.newArrayList();
-        for (Map.Entry<Long, Feature> entry : data.entrySet()) {
-            StringBuilder line = new StringBuilder();
-            line.append(entry.getValue().getId() + " " + entry.getValue().getMinScore() + " "
-                    + entry.getValue().getMaxScore());
+        StringBuilder line = new StringBuilder();
+        for (int i = 1; i < range.max.length; i++) {
+            line.setLength(0);
+            line.append(i).append(" ");
+            line.append(range.min[i][0]).append(" ");
+            line.append(range.max[i][0]).append(" ");
+            line.append(range.sum[i][0]);
             lines.add(line.toString());
         }
-        try (FileWriter fw = new FileWriter(getFile(category, "range"))) {
+        try (FileWriter fw = new FileWriter(RANGE)) {
             IOUtils.writeLines(lines, "\n", fw);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static void scale(List<Feature> doc, Range range) {
-        double value = 0, max = 0, min = 0;
-        Iterator<Feature> it = doc.iterator();
-        Feature w = null;
-        while (it.hasNext()) {
-            w = it.next();
-            value = w.getScore();
-            Feature rangeWord = range.get(w.getId());
-            if (rangeWord != null) {
-                max = rangeWord.getMaxScore();
-                min = rangeWord.getMinScore();
-
-                if (max == min) {
-                    continue;
-                }
-
-                if (value == min) {
-                    value = lower;
-                } else if (value == max) {
-                    value = upper;
-                } else {
-                    value = lower + (upper - lower) * (value - min) / (max - min);
-                }
-            } else {
-                value = 1;
-            }
-
-            if (value > 0) {
-                w.setScore(Double.parseDouble(df.format(value)));
-            } else {
-                it.remove();
-            }
-        }
-    }
-
-    public static Range range(List<Feature> features, long maxWordId) {
-        Range range = new Range();
-
-        double[] max = new double[(int) maxWordId + 1];
-        double[] min = new double[(int) maxWordId + 1];
-        for (int i = 0; i <= maxWordId; i++) {
-            max[i] = -Double.MAX_VALUE;
-            min[i] = Double.MAX_VALUE;
-        }
-        for (Feature word : features) {
-            max[(int) word.getId()] = Math.max(word.getScore(), max[(int) word.getId()]);
-            min[(int) word.getId()] = Math.min(word.getScore(), min[(int) word.getId()]);
-        }
-        for (Feature word : features) {
-            word.setMaxScore(Math.max(max[(int) word.getId()], 0));
-            word.setMinScore(Math.min(min[(int) word.getId()], 0));
-            range.put(word);
         }
 
         return range;
     }
 
     public static class Range {
-        Map<Long, Feature> data = Maps.newTreeMap();
+        public final double[][] max;
+        public final double[][] min;
+        public final double[][] sum;
 
-        public Map<Long, Feature> getData() {
-            return this.data;
+        public Range(int featureMaxId) {
+            max = new double[featureMaxId + 1][1];
+            min = new double[featureMaxId + 1][1];
+            sum = new double[featureMaxId + 1][1];
+
+            for (int i = 1; i < featureMaxId; i++) {
+                max[i][0] = Double.MIN_VALUE;
+                min[i][0] = Double.MAX_VALUE;
+            }
         }
-
-        public void put(Feature word) {
-            data.put(word.getId(), word);
-        }
-
-        public Feature get(long wordId) {
-            return data.get(wordId);
-        }
-
     }
 
 }

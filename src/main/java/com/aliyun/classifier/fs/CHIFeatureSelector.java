@@ -1,6 +1,6 @@
 package com.aliyun.classifier.fs;
 
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -9,8 +9,7 @@ import java.util.concurrent.CountDownLatch;
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Corpus;
 import com.aliyun.classifier.Feature;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
+import com.aliyun.classifier.Math;
 
 public class CHIFeatureSelector extends Config {
 
@@ -28,14 +27,13 @@ public class CHIFeatureSelector extends Config {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                System.out.print(".");
+                System.out.println(cdl.getCount() + "/" + corpus.features.size());
             }
         }, 3000, 10 * 1000);
 
         long start = System.currentTimeMillis();
         for (Feature feature : corpus.features) {
-            threadPool.submit(new ComputeTask(corpus.categoryTokenized, corpus.N, CATEGORY_NAME_CODE.keySet(), feature,
-                    cdl));
+            threadPool.submit(new ComputeTask(corpus, CATEGORY_NAME_CODE.keySet(), feature, cdl));
         }
         cdl.await();
         timer.cancel();
@@ -45,16 +43,13 @@ public class CHIFeatureSelector extends Config {
 
     private static class ComputeTask implements Runnable {
 
-        private Multimap<String, Set<String>> categoryTokenized;
-        private int                           N;
-        private Set<String>                   categories;
-        private Feature                          feature;
-        private CountDownLatch                cdl;
+        private Corpus         corpus;
+        private Set<String>    categories;
+        private Feature        feature;
+        private CountDownLatch cdl;
 
-        public ComputeTask(Multimap<String, Set<String>> categoryTokenized, int N, Set<String> categories,
-                           Feature feature, CountDownLatch cdl) {
-            this.categoryTokenized = categoryTokenized;
-            this.N = N;
+        public ComputeTask(Corpus corpus, Set<String> categories, Feature feature, CountDownLatch cdl) {
+            this.corpus = corpus;
             this.categories = categories;
             this.feature = feature;
             this.cdl = cdl;
@@ -62,17 +57,25 @@ public class CHIFeatureSelector extends Config {
 
         public void run() {
             try {
-                Map<String, Double> categoryCHI = Maps.newLinkedHashMap();
+                double max = Double.MIN_VALUE, min = Double.MAX_VALUE;
                 for (String category : categories) {
                     double chi = computeCategoryCHI(feature, category);
-                    categoryCHI.put(category, chi);
+                    corpus.chiPerCategory[this.feature.getId()][CATEGORY_NAME_CODE.get(category)] = chi;
+                    max = java.lang.Math.max(max, chi);
+                    min = java.lang.Math.min(min, chi);
                 }
 
-                double featureCHI = normalization(categoryCHI);
-
-                if (featureCHI > 0.0) {
-                    this.feature.setQuality(featureCHI);
+                for (int i = 1; i < corpus.chiPerCategory[this.feature.getId()].length; i++) {
+                    if (min == max) {
+                        continue;
+                    }
+                    corpus.chiPerCategory[this.feature.getId()][i] = (corpus.chiPerCategory[this.feature.getId()][i] - min)
+                            / (max - min);
                 }
+
+                double chiScore = Math.variance(Arrays.copyOfRange(corpus.chiPerCategory[this.feature.getId()], 1,
+                        corpus.chiPerCategory[this.feature.getId()].length));
+                this.feature.setChiScore(chiScore);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -80,35 +83,19 @@ public class CHIFeatureSelector extends Config {
             }
         }
 
-        private double normalization(Map<String, Double> categoryCHI) {
-            double sum = 0.0;
-            for (Double value : categoryCHI.values()) {
-                sum += value;
-            }
-
-            double max = 0.0, normValue = 0.0;
-            for (Map.Entry<String, Double> entry : categoryCHI.entrySet()) {
-                normValue = entry.getValue() / sum;
-                max = max < normValue ? normValue : max;
-                entry.setValue(normValue);
-            }
-            return max;
-        }
-
         private double computeCategoryCHI(Feature feature, String category) {
             double A = 0, B = 0, C = 0, D = 0;
-            for (String key : categoryTokenized.keySet()) {
+            for (String key : corpus.categoryTokenized.keySet()) {
                 if (key.equals(category)) {
-                    for (Set<String> doc : categoryTokenized.get(key)) {
-                        if (doc.contains(feature.getValue())) {
+                    for (Set<String> docFeature : corpus.categoryTokenized.get(key)) {
+                        if (docFeature.contains(feature.getValue())) {
                             A++;
                         } else {
                             C++;
-
                         }
                     }
                 } else {
-                    for (Set<String> docFeature : categoryTokenized.get(key)) {
+                    for (Set<String> docFeature : corpus.categoryTokenized.get(key)) {
                         if (docFeature.contains(feature.getValue())) {
                             B++;
                         } else {
@@ -118,7 +105,7 @@ public class CHIFeatureSelector extends Config {
                 }
             }
 
-            double numerator = N * Math.pow(A * D - C * B, 2);
+            double numerator = corpus.N * java.lang.Math.pow(A * D - C * B, 2);
             double denominator = (A + B) * (A + C) * (B + D) * (C + D);
 
             if (numerator > 0.0 && denominator > 0.0) {

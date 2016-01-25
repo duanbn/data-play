@@ -2,44 +2,41 @@ package com.aliyun.classifier;
 
 public class Feature implements Comparable<Feature> {
 
-    private long   id;
+    private int    id;
 
     private String value;
 
-    private int    tf;
-
     private int    df;
 
-    private double score;
+    private double weight;
 
-    private double minScore;
+    private double igScore;
 
-    private double maxScore;
-
-    private double quality;
+    private double chiScore;
 
     private Feature() {
     }
 
     public static Feature valueOf(String value) {
-        Feature w = new Feature();
-        w.setValue(value);
-        return w;
+        Feature feature = new Feature();
+        feature.setValue(value);
+        return feature;
     }
 
-    public static Feature valueOf(long id) {
+    public static Feature valueOf(int id) {
         Feature w = new Feature();
         w.id = id;
         return w;
     }
 
-    public static Feature valueOf(long id, String value, int tf, int df) {
-        Feature w = new Feature();
-        w.id = id;
-        w.value = value;
-        w.tf = tf;
-        w.df = df;
-        return w;
+    public static Feature valueOf(int id, String value, int df, double igScore, double chiScore) {
+        Feature feature = new Feature();
+        feature.id = id;
+        feature.value = value;
+        feature.df = df;
+        feature.igScore = igScore;
+        feature.chiScore = chiScore;
+        return feature;
     }
 
     @Override
@@ -49,15 +46,40 @@ public class Feature implements Comparable<Feature> {
 
     @Override
     public String toString() {
-        return "Word [id=" + id + ", value=" + value + ", tf=" + tf + ", df=" + df + ", score=" + score + ", minScore="
-                + minScore + ", maxScore=" + maxScore + ", quality=" + quality + "]";
+        return "Feature [id=" + id + ", value=" + value + ", df=" + df + ", weight=" + weight + ", igScore=" + igScore
+                + ", chiScore=" + chiScore + "]";
     }
 
-    public long getId() {
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((value == null) ? 0 : value.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Feature other = (Feature) obj;
+        if (value == null) {
+            if (other.value != null)
+                return false;
+        } else if (!value.equals(other.value))
+            return false;
+        return true;
+    }
+
+    public int getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -69,14 +91,6 @@ public class Feature implements Comparable<Feature> {
         this.value = value;
     }
 
-    public int getTf() {
-        return tf;
-    }
-
-    public void setTf(int tf) {
-        this.tf = tf;
-    }
-
     public int getDf() {
         return df;
     }
@@ -85,36 +99,28 @@ public class Feature implements Comparable<Feature> {
         this.df = df;
     }
 
-    public double getScore() {
-        return score;
+    public double getWeight() {
+        return weight;
     }
 
-    public void setScore(double score) {
-        this.score = score;
+    public void setWeight(double weight) {
+        this.weight = weight;
     }
 
-    public double getMinScore() {
-        return minScore;
+    public double getIgScore() {
+        return igScore;
     }
 
-    public void setMinScore(double minScore) {
-        this.minScore = minScore;
+    public void setIgScore(double igScore) {
+        this.igScore = igScore;
     }
 
-    public double getMaxScore() {
-        return maxScore;
+    public double getChiScore() {
+        return chiScore;
     }
 
-    public void setMaxScore(double maxScore) {
-        this.maxScore = maxScore;
-    }
-
-    public double getQuality() {
-        return quality;
-    }
-
-    public void setQuality(double quality) {
-        this.quality = quality;
+    public void setChiScore(double chiScore) {
+        this.chiScore = chiScore;
     }
 
 }

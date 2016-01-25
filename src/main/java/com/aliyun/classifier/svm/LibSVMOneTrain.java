@@ -22,13 +22,13 @@ public class LibSVMOneTrain extends Config {
     public void run() throws Exception {
         LibSVMOneConfuseMatrix cMatrix = new LibSVMOneConfuseMatrix();
 
-        svm_parameter param = getSvm_parameter();
         svm_model model = null;
         for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
             try (FileReader svmFr = new FileReader(getFile(entry.getKey(), "svm"));
                     FileReader svmtFr = new FileReader(getFile(entry.getKey(), "svmt"))) {
                 List<String> svmLines = IOUtils.readLines(svmFr);
 
+                svm_parameter param = getSvm_parameter(entry.getValue());
                 svm_problem prob = getSvm_problem(svmLines, param);
                 model = svm.svm_train(prob, param);
                 svm.svm_save_model(getFile(entry.getKey(), "model").getAbsolutePath(), model);
@@ -45,7 +45,7 @@ public class LibSVMOneTrain extends Config {
         System.out.println("done");
     }
 
-    private svm_parameter getSvm_parameter() {
+    private svm_parameter getSvm_parameter(double nu) {
         svm_parameter param = new svm_parameter();
 
         param.svm_type = svm_parameter.ONE_CLASS;
@@ -55,7 +55,7 @@ public class LibSVMOneTrain extends Config {
         param.nr_weight = 0;
         param.weight_label = weightLabel;
         param.weight = weight;
-        param.nu = 0.005;
+        param.nu = nu;
 
         param.kernel_type = svm_parameter.RBF;
         param.degree = 3;

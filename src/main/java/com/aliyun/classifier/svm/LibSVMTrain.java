@@ -3,7 +3,6 @@ package com.aliyun.classifier.svm;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.List;
-import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
@@ -48,26 +47,19 @@ public class LibSVMTrain extends Config {
         svm_parameter param = new svm_parameter();
 
         param.svm_type = svm_parameter.C_SVC;
-        // compute punish factor
-        int[] weightLabel = new int[CATEGORY_PARAM.size()];
-        double[] weight = new double[CATEGORY_PARAM.size()];
-        int i = 0;
-        for (Map.Entry<String, Double> entry : CATEGORY_PARAM.entrySet()) {
-            weightLabel[i] = CATEGORY_NAME_CODE.get(entry.getKey());
-            weight[i] = entry.getValue();
-            i++;
-        }
-        param.nr_weight = CATEGORY_PARAM.size();
+        int[] weightLabel = new int[0];
+        double[] weight = new double[0];
+        param.nr_weight = 0;
         param.weight_label = weightLabel;
         param.weight = weight;
         param.nu = 0.1;
 
         param.kernel_type = svm_parameter.RBF;
         param.degree = 3;
-        param.gamma = 0; // 1/num_features
+        param.gamma = GAMMA; // 1/num_features
         param.coef0 = 0;
         param.cache_size = 200;
-        param.C = 1;
+        param.C = COST;
         param.eps = 1e-3;
         param.p = 0.1;
         param.shrinking = 1;
