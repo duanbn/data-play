@@ -15,11 +15,18 @@ import com.aliyun.classifier.Config;
 import com.google.common.collect.Lists;
 import com.google.common.math.DoubleMath;
 
+/**
+ * 非线程安全类
+ * 
+ * @author shanwei Jan 26, 2016 10:12:40 AM
+ */
 public class LibSVMConfuseMatrix extends Config {
 
-    private static final DecimalFormat df           = new DecimalFormat("0.######");
-    private static final int[]         COLUMN_WITDH = new int[] { 30, 15, 15, 15, 20 };
+    private static final DecimalFormat dformat      = new DecimalFormat("0.######");
+    private static final int[]         COLUMN_WITDH = new int[] { 30, 20, 20, 20, 20 };
 
+    private double                     testCount;
+    private double                     accuracyCount;
     private int[][]                    maxtirx      = new int[CATEGORY_PARAM.size() + 1][3];
     private List<Row>                  rows         = Lists.newArrayList();
 
@@ -31,6 +38,8 @@ public class LibSVMConfuseMatrix extends Config {
     }
 
     public void testSample(List<String> lines, svm_model model) {
+        testCount += lines.size();
+
         for (String line : lines) {
             StringTokenizer st = new StringTokenizer(line, " \t\n\r\f:");
             double c = Double.parseDouble(st.nextToken());
@@ -45,6 +54,7 @@ public class LibSVMConfuseMatrix extends Config {
 
             if (c == pc) {
                 maxtirx[new Double(c).intValue()][0] += 1;
+                this.accuracyCount++;
             } else {
                 maxtirx[new Double(c).intValue()][1] += 1;
                 maxtirx[new Double(pc).intValue()][2] += 1;
@@ -84,12 +94,17 @@ public class LibSVMConfuseMatrix extends Config {
             report.add(row.toString());
         }
         report.add("---------------------------------------------");
-        report.add(StringUtils.rightPad("RECALL:", COLUMN_WITDH[0])
-                + StringUtils.rightPad(df.format(DoubleMath.mean(recalls)), COLUMN_WITDH[1]));
-        report.add(StringUtils.rightPad("PRECISION:", COLUMN_WITDH[0])
-                + StringUtils.rightPad(df.format(DoubleMath.mean(precisions)), COLUMN_WITDH[1]));
-        report.add(StringUtils.rightPad("FSCORE:", COLUMN_WITDH[0])
-                + StringUtils.rightPad(df.format(DoubleMath.mean(fscores)), COLUMN_WITDH[1]));
+        report.add(StringUtils.rightPad("ACCURACY:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(String.valueOf(accuracyCount / testCount), COLUMN_WITDH[1])
+                + StringUtils.rightPad("total:" + this.testCount, COLUMN_WITDH[2])
+                + StringUtils.rightPad("true:" + this.accuracyCount, COLUMN_WITDH[3])
+                + StringUtils.rightPad("false:" + (this.testCount - this.accuracyCount), COLUMN_WITDH[4]));
+        report.add(StringUtils.rightPad("MEAN-RECALL:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(dformat.format(DoubleMath.mean(recalls)), COLUMN_WITDH[1]));
+        report.add(StringUtils.rightPad("MEAN-PRECISION:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(dformat.format(DoubleMath.mean(precisions)), COLUMN_WITDH[1]));
+        report.add(StringUtils.rightPad("MEAN-FSCORE:", COLUMN_WITDH[0])
+                + StringUtils.rightPad(dformat.format(DoubleMath.mean(fscores)), COLUMN_WITDH[1]));
         report.add(StringUtils.rightPad("COST:", COLUMN_WITDH[0])
                 + StringUtils.rightPad(String.valueOf(COST), COLUMN_WITDH[1]));
         report.add(StringUtils.rightPad("GAMMA:", COLUMN_WITDH[0])
@@ -124,10 +139,6 @@ public class LibSVMConfuseMatrix extends Config {
         return A / (A + C);
     }
 
-    public double accuracy(double A, double B, double C, double D) {
-        return (A + D) / (A + B + C + D);
-    }
-
     private static class Row implements Comparable<Row> {
         public String category;
         public double recall;
@@ -151,9 +162,9 @@ public class LibSVMConfuseMatrix extends Config {
         public String toString() {
             StringBuilder info = new StringBuilder(StringUtils.rightPad("[" + category.toLowerCase() + "]",
                     COLUMN_WITDH[0]));
-            info.append(StringUtils.rightPad(df.format(recall), COLUMN_WITDH[1]));
-            info.append(StringUtils.rightPad(df.format(precision), COLUMN_WITDH[2]));
-            info.append(StringUtils.rightPad(df.format(fscore), COLUMN_WITDH[3]));
+            info.append(StringUtils.rightPad(dformat.format(recall), COLUMN_WITDH[1]));
+            info.append(StringUtils.rightPad(dformat.format(precision), COLUMN_WITDH[2]));
+            info.append(StringUtils.rightPad(dformat.format(fscore), COLUMN_WITDH[3]));
             info.append(StringUtils.rightPad(this.A + " " + this.B + " " + this.C, COLUMN_WITDH[4]));
             return info.toString();
         }

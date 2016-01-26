@@ -14,6 +14,8 @@ public class Feature implements Comparable<Feature> {
 
     private double chiScore;
 
+    private double score;
+
     private Feature() {
     }
 
@@ -29,13 +31,14 @@ public class Feature implements Comparable<Feature> {
         return w;
     }
 
-    public static Feature valueOf(int id, String value, int df, double igScore, double chiScore) {
+    public static Feature valueOf(int id, String value, int df, double igScore, double chiScore, double score) {
         Feature feature = new Feature();
         feature.id = id;
         feature.value = value;
         feature.df = df;
         feature.igScore = igScore;
         feature.chiScore = chiScore;
+        feature.score = score;
         return feature;
     }
 
@@ -46,8 +49,7 @@ public class Feature implements Comparable<Feature> {
 
     @Override
     public String toString() {
-        return "Feature [id=" + id + ", value=" + value + ", df=" + df + ", weight=" + weight + ", igScore=" + igScore
-                + ", chiScore=" + chiScore + "]";
+        return "[" + id + " " + value + " " + weight + "]";
     }
 
     @Override
@@ -121,6 +123,14 @@ public class Feature implements Comparable<Feature> {
 
     public void setChiScore(double chiScore) {
         this.chiScore = chiScore;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
     }
 
 }

@@ -17,10 +17,10 @@ public class CHIFeatureSelector extends Config {
 
     public CHIFeatureSelector(Corpus corpus) {
         this.corpus = corpus;
+        corpus.chiPerCategory = new double[corpus.maxFeatureId + 1][CATEGORY_NAME_CODE.size() + 1];
     }
 
     public void run() throws Exception {
-
         final CountDownLatch cdl = new CountDownLatch(corpus.features.size());
 
         Timer timer = new Timer();
@@ -57,24 +57,14 @@ public class CHIFeatureSelector extends Config {
 
         public void run() {
             try {
-                double max = Double.MIN_VALUE, min = Double.MAX_VALUE;
                 for (String category : categories) {
                     double chi = computeCategoryCHI(feature, category);
                     corpus.chiPerCategory[this.feature.getId()][CATEGORY_NAME_CODE.get(category)] = chi;
-                    max = java.lang.Math.max(max, chi);
-                    min = java.lang.Math.min(min, chi);
                 }
 
-                for (int i = 1; i < corpus.chiPerCategory[this.feature.getId()].length; i++) {
-                    if (min == max) {
-                        continue;
-                    }
-                    corpus.chiPerCategory[this.feature.getId()][i] = (corpus.chiPerCategory[this.feature.getId()][i] - min)
-                            / (max - min);
-                }
-
-                double chiScore = Math.variance(Arrays.copyOfRange(corpus.chiPerCategory[this.feature.getId()], 1,
-                        corpus.chiPerCategory[this.feature.getId()].length));
+                double[] chiScores = Arrays.copyOfRange(corpus.chiPerCategory[this.feature.getId()], 1,
+                        corpus.chiPerCategory[this.feature.getId()].length);
+                double chiScore = Math.variance(chiScores);
                 this.feature.setChiScore(chiScore);
             } catch (Exception e) {
                 e.printStackTrace();

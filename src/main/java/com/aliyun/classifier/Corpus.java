@@ -12,6 +12,8 @@ import com.google.common.collect.Multiset;
 
 public class Corpus {
 
+    public int                           maxFeatureId;
+
     public int[][]                       tfPerCategory;
 
     public double[][]                    chiPerCategory;

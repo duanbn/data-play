@@ -26,7 +26,7 @@ public class Config {
     protected static final ExecutorService      threadPool         = Executors.newFixedThreadPool(Runtime.getRuntime()
                                                                            .availableProcessors() * 5);
 
-    protected static final double               IG_THRESHOLD;
+    protected static final double               DR_THRESHOLD;
     protected static final double               COST;
     protected static final double               GAMMA;
 
@@ -64,7 +64,7 @@ public class Config {
 
         CORPUS_NAME = conf.getString("corpus.name");
         CORPUS_DB = new File(conf.getString("corpus.directory"));
-        IG_THRESHOLD = conf.getDouble("corpus.ig.threshold");
+        DR_THRESHOLD = conf.getDouble("corpus.dr.threshold");
         COST = conf.getDouble("corpus.cost");
         GAMMA = conf.getDouble("corpus.gamma");
 
@@ -95,8 +95,8 @@ public class Config {
         return new File(TRAIN_DB, name + "." + prefix);
     }
 
-    protected static double weight(int tf, int df, int N) {
-        return sim.tf(tf) * sim.idf(df, N);
+    protected static double weight(int tf, int df, int N, double score) {
+        return sim.tf(tf) * sim.idf(df, N) * score;
     }
 
     protected static Multiset<String> analysis(File corpus) throws Exception {

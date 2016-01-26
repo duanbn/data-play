@@ -10,30 +10,31 @@ import org.apache.commons.io.IOUtils;
 
 import com.aliyun.classifier.Config;
 import com.aliyun.classifier.Feature;
-import com.aliyun.classifier.svm.LibSVMScale.Range;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Sets;
 
 public class LibSVMTextVectorizer extends Config {
 
-    private static final Range                range;
     private static final Map<String, Feature> featureMap = Maps.newHashMap();
 
     private static int                        N;
 
     static {
-        range = LibSVMScale.materialize();
-
         try (FileReader fr = new FileReader(DICT)) {
             String[] ss = null;
             List<String> lines = IOUtils.readLines(fr);
-            N = Integer.parseInt(lines.get(0));
+            N = Integer.parseInt(lines.get(0).split(",")[0]);
             Feature feature = null;
             for (String line : lines.subList(1, lines.size())) {
                 ss = line.split(" +");
-                feature = Feature.valueOf(Integer.parseInt(ss[0]), ss[1], Integer.parseInt(ss[2]),
-                        Double.parseDouble(ss[3]), Double.parseDouble(ss[4]));
+                int featureId = Integer.parseInt(ss[0]);
+                String value = ss[1];
+                int df = Integer.parseInt(ss[2]);
+                double igScore = Double.parseDouble(ss[3]);
+                double chiScore = Double.parseDouble(ss[4]);
+                double score = Double.parseDouble(ss[5]);
+                feature = Feature.valueOf(featureId, value, df, igScore, chiScore, score);
                 featureMap.put(ss[1], feature);
             }
         } catch (Exception e) {
@@ -45,15 +46,25 @@ public class LibSVMTextVectorizer extends Config {
         SortedSet<Feature> result = Sets.newTreeSet();
         Multiset<String> doc = analysis(new StringReader(text));
 
+        double max = 0, min = 0;
         for (Multiset.Entry<String> word : doc.entrySet()) {
             if (!featureMap.containsKey(word.getElement())) {
                 continue;
             }
             Feature feature = featureMap.get(word.getElement());
-            feature.setWeight(weight(word.getCount(), feature.getDf(), N));
+            double weight = weight(word.getCount(), feature.getDf(), N, feature.getScore());
+            feature.setWeight(weight);
+            max = java.lang.Math.max(weight, max);
+            min = java.lang.Math.min(weight, min);
             result.add(feature);
         }
-        LibSVMScale.scale(result, range);
+        for (Feature feature : result) {
+            if (max == min) {
+                continue;
+            }
+            double weight = (feature.getWeight() - min) / (max - min);
+            feature.setWeight(weight);
+        }
         return result;
     }
 }

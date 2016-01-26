@@ -11,8 +11,6 @@ import java.util.SortedSet;
 
 import org.apache.commons.io.IOUtils;
 
-import com.aliyun.classifier.svm.LibSVMScale;
-import com.aliyun.classifier.svm.LibSVMScale.Range;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -22,19 +20,19 @@ import com.google.common.collect.Sets;
 
 public class CorpusVectorizer extends Config {
 
-    private int                   N            = 0;
-    private int                   maxFeatureId = 0;
-    private Map<String, Integer>  wordIdMap    = Maps.newHashMap();
-    private Map<Integer, Integer> df           = Maps.newHashMap();
-    private Map<Integer, Double>  igScoreMap   = Maps.newHashMap();
-    private Map<Integer, Double>  chiScoreMap  = Maps.newHashMap();
+    private int                   N           = 0;
+    private Map<String, Integer>  wordIdMap   = Maps.newHashMap();
+    private Map<Integer, Integer> df          = Maps.newHashMap();
+    private Map<Integer, Double>  igScoreMap  = Maps.newHashMap();
+    private Map<Integer, Double>  chiScoreMap = Maps.newHashMap();
+    private Map<Integer, Double>  scoreMap    = Maps.newHashMap();
 
     public CorpusVectorizer() throws Exception {
         try (BufferedReader br = new BufferedReader(new FileReader(DICT))) {
             String[] ss = null;
             List<String> lines = IOUtils.readLines(br);
-            this.N = Integer.parseInt(lines.get(0));
-            this.maxFeatureId = lines.size() - 1;
+            ss = lines.get(0).split(",");
+            this.N = Integer.parseInt(ss[0]);
             for (String line : lines.subList(1, lines.size())) {
                 ss = line.split(" +");
                 int featureId = Integer.parseInt(ss[0]);
@@ -42,67 +40,77 @@ public class CorpusVectorizer extends Config {
                 this.df.put(featureId, Integer.parseInt(ss[2]));
                 this.igScoreMap.put(featureId, Double.parseDouble(ss[3]));
                 this.chiScoreMap.put(featureId, Double.parseDouble(ss[4]));
+                this.scoreMap.put(featureId, Double.parseDouble(ss[5]));
             }
         }
         System.out.println("load " + DICT.getName() + " done");
     }
 
     public void run() throws Exception {
-        Corpus corpus = new Corpus();
-
         Multimap<Integer, SortedSet<Feature>> categoryFeatures = ArrayListMultimap.create();
         for (Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
             for (File corpusFile : new File(CORPUS_DB, entry.getKey()).listFiles()) {
+
                 Multiset<String> tokenized = analysis(corpusFile);
+                double max = Double.MIN_VALUE, min = Double.MAX_VALUE;
                 SortedSet<Feature> features = Sets.newTreeSet();
-                for (Multiset.Entry<String> entry1 : tokenized.entrySet()) {
-                    if (wordIdMap.containsKey(entry1.getElement())) {
-                        int featureId = wordIdMap.get(entry1.getElement());
-                        String value = entry1.getElement();
-                        int tf = entry1.getCount();
+                for (Multiset.Entry<String> token : tokenized.entrySet()) {
+                    if (wordIdMap.containsKey(token.getElement())) {
+                        String value = token.getElement();
+                        int featureId = wordIdMap.get(value);
+                        int tf = token.getCount();
                         int df = this.df.get(featureId);
-                        double weight = weight(tf, df, N);
-                        Feature feature = Feature.valueOf(featureId, value, df, this.igScoreMap.get(featureId),
-                                this.chiScoreMap.get(featureId));
+                        double score = this.scoreMap.get(featureId);
+                        double igScore = this.igScoreMap.get(featureId);
+                        double chiScore = this.chiScoreMap.get(featureId);
+
+                        double weight = weight(tf, df, N, score);
+                        Feature feature = Feature.valueOf(featureId, value, df, igScore, chiScore, score);
                         feature.setWeight(weight);
                         features.add(feature);
+
+                        max = java.lang.Math.max(weight, max);
+                        min = java.lang.Math.min(weight, min);
                     }
                 }
+                for (Feature feature : features) {
+                    if (max == min) {
+                        continue;
+                    }
+                    double norm = (feature.getWeight() - min) / (max - min);
+                    feature.setWeight(norm);
+                }
                 categoryFeatures.put(entry.getValue(), features);
-                corpus.features.addAll(features);
             }
         }
-        System.out.println("vectorization all feature done");
-
-        Range range = LibSVMScale.range(corpus.features, maxFeatureId);
-        System.out.println("compute range done");
 
         List<String> svmLines = Lists.newArrayList();
         List<String> svmtLines = Lists.newArrayList();
         for (final Map.Entry<String, Integer> entry : CATEGORY_NAME_CODE.entrySet()) {
-            String category = entry.getKey();
+            //            String category = entry.getKey();
             Integer categoryId = entry.getValue();
 
             Multimap<Integer, SortedSet<Feature>> svmFormats = ArrayListMultimap.create();
             for (SortedSet<Feature> features : categoryFeatures.get(categoryId)) {
-                LibSVMScale.scale(features, range);
                 svmFormats.put(categoryId, features);
             }
             Map<Integer, List<SortedSet<Feature>>> svmDocsMap = Maps.newHashMap();
             Map<Integer, List<SortedSet<Feature>>> svmtDocsMap = Maps.newHashMap();
             split(svmDocsMap, svmtDocsMap, svmFormats, 0.6);
+            build(svmLines, svmDocsMap);
+            build(svmtLines, svmtDocsMap);
 
-            List<String> oneSvmLines = build(svmLines, svmDocsMap);
-            List<String> oneSvmtLines = build(svmtLines, svmtDocsMap);
+            //            List<String> oneSvmLines = build(svmLines, svmDocsMap);
+            //            List<String> oneSvmtLines = build(svmtLines, svmtDocsMap);
 
-            try (FileWriter fw = new FileWriter(getFile(category, "svm"))) {
-                IOUtils.writeLines(oneSvmLines, "\n", fw);
-            }
-            try (FileWriter fw = new FileWriter(getFile(category, "svmt"))) {
-                IOUtils.writeLines(oneSvmtLines, "\n", fw);
-            }
+            //            try (FileWriter fw = new FileWriter(getFile(category, "svm"))) {
+            //                IOUtils.writeLines(oneSvmLines, "\n", fw);
+            //            }
+            //            try (FileWriter fw = new FileWriter(getFile(category, "svmt"))) {
+            //                IOUtils.writeLines(oneSvmtLines, "\n", fw);
+            //            }
 
-            System.out.println("vectorization " + category + " done");
+            //            System.out.println("vectorization " + category + " done");
         }
         try (FileWriter fw = new FileWriter(getFile(CORPUS_NAME, "svm"))) {
             IOUtils.writeLines(svmLines, "\n", fw);
@@ -110,6 +118,8 @@ public class CorpusVectorizer extends Config {
         try (FileWriter fw = new FileWriter(getFile(CORPUS_NAME, "svmt"))) {
             IOUtils.writeLines(svmtLines, "\n", fw);
         }
+
+        System.out.println("vectorization all feature done");
     }
 
     private void split(Map<Integer, List<SortedSet<Feature>>> svmMap, Map<Integer, List<SortedSet<Feature>>> svmtMap,

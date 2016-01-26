@@ -2,6 +2,9 @@ package com.aliyun.classifier;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,10 +75,6 @@ public class CorpusDict extends Config {
             }
         }
         corpus.features.addAll(featureSet);
-        System.out.println("collect feature done " + corpus.features.size() + " "
-                + (System.currentTimeMillis() - start) + "ms");
-
-        new IGFeatureSelector(corpus).run();
 
         int featureId = 0;
         for (Feature feature : corpus.features) {
@@ -83,9 +82,12 @@ public class CorpusDict extends Config {
             feature.setId(featureId);
             feature.setDf(corpus.df.get(feature.getValue()));
         }
+        corpus.maxFeatureId = featureId;
 
-        corpus.tfPerCategory = new int[corpus.features.size() + 1][CATEGORY_NAME_CODE.size() + 1];
-        corpus.chiPerCategory = new double[corpus.features.size() + 1][CATEGORY_NAME_CODE.size() + 1];
+        System.out.println("collect feature done " + corpus.features.size() + " "
+                + (System.currentTimeMillis() - start) + "ms");
+
+        corpus.tfPerCategory = new int[corpus.maxFeatureId + 1][CATEGORY_NAME_CODE.size() + 1];
         for (Feature feature : corpus.features) {
             for (Map.Entry<String, Multiset<String>> entry : corpus.categoryFeatures.entrySet()) {
                 String category = entry.getKey();
@@ -94,9 +96,31 @@ public class CorpusDict extends Config {
             }
         }
 
+        new IGFeatureSelector(corpus).run();
         new CHIFeatureSelector(corpus).run();
 
-        List<String> featureLines = Lists.newArrayList(String.valueOf(corpus.N));
+        Iterator<Feature> featureIt = corpus.features.iterator();
+        Feature item = null;
+        while (featureIt.hasNext()) {
+            item = featureIt.next();
+            double score = item.getIgScore() * item.getChiScore();
+            if (score < DR_THRESHOLD)
+                featureIt.remove();
+            else
+                item.setScore(score);
+        }
+        Collections.sort(corpus.features, new Comparator<Feature>() {
+            @Override
+            public int compare(Feature o1, Feature o2) {
+                if (o1.getScore() == o2.getScore()) {
+                    return 0;
+                }
+                return o1.getScore() > o2.getScore() ? -1 : 1;
+            }
+        });
+
+        List<String> featureLines = Lists.newArrayList();
+        featureLines.add(String.valueOf(corpus.N) + "," + String.valueOf(corpus.maxFeatureId));
         List<String> tfLines = Lists.newArrayList();
         List<String> chiLines = Lists.newArrayList();
         StringBuilder line = new StringBuilder();
@@ -106,7 +130,8 @@ public class CorpusDict extends Config {
             line.append(feature.getValue()).append(" ");
             line.append(feature.getDf()).append(" ");
             line.append(feature.getIgScore()).append(" ");
-            line.append(feature.getChiScore());
+            line.append(feature.getChiScore()).append(" ");
+            line.append(feature.getScore());
             featureLines.add(line.toString());
 
             line.setLength(0);

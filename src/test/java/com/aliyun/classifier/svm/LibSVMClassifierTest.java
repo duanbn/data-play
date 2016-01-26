@@ -11,18 +11,20 @@ public class LibSVMClassifierTest {
 
     @Test
     public void testOne() throws Exception {
-        String htmlSource = WebUtil.download("http://www.jd.com/");
-        String cs = classifier.classify(HtmlUtil.extract(htmlSource).getSimipleContent());
+        String domain = "http://www.jd.com/";
+        String htmlSource = WebUtil.download(domain);
+        String cs = classifier.classify(domain, HtmlUtil.extract(htmlSource).getSimipleContent());
         System.out.println(cs);
     }
 
     @Test
     public void testFull() throws Exception {
-        String htmlSource = WebUtil.download("http://www.jd.com/");
-        String[] cs = classifier.classifyFull(HtmlUtil.extract(htmlSource).getSimipleContent());
-        for (String c : cs) {
-            System.out.println(c);
-        }
+        //        String domain = "http://www.jd.com/";
+        //        String htmlSource = WebUtil.download(domain);
+        //        String[] cs = classifier.classifyFull(domain, HtmlUtil.extract(htmlSource).getSimipleContent());
+        //        for (String c : cs) {
+        //            System.out.println(c);
+        //        }
     }
 
 }
