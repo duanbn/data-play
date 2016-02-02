@@ -96,7 +96,8 @@ public class Config {
     }
 
     protected static double weight(int tf, int df, int N, double score) {
-        return sim.tf(tf) * sim.idf(df, N) * score;
+        //        return sim.tf(tf) * sim.idf(df, N);
+        return sim.tf(tf) * score;
     }
 
     protected static Multiset<String> analysis(File corpus) throws Exception {

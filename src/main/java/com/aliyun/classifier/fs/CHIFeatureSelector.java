@@ -64,7 +64,7 @@ public class CHIFeatureSelector extends Config {
 
                 double[] chiScores = Arrays.copyOfRange(corpus.chiPerCategory[this.feature.getId()], 1,
                         corpus.chiPerCategory[this.feature.getId()].length);
-                double chiScore = Math.variance(chiScores);
+                double chiScore = Math.sVariance(chiScores);
                 this.feature.setChiScore(chiScore);
             } catch (Exception e) {
                 e.printStackTrace();
